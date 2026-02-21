@@ -42,11 +42,32 @@
         
         <!-- Основное окно с игрой -->
         <div class="main-content">
-            <!-- Верхняя панель с таймером и информацией -->
+            <!-- Верхняя панель с информацией об игре -->
             <div class="game-header">
-                <div id="game-timer" class="game-timer">⏰ 20:00</div>
-                <div id="game-status" class="game-status">Ожидание игроков...</div>
-                <div id="game-info" class="game-info"></div>
+                <div class="game-title" id="game-title">🎮 Выберите игру</div>
+                <div class="game-info-panel" id="game-info-panel">
+                    <div class="info-item" id="game-current-player">
+                        <span class="info-label">Вы:</span>
+                        <span class="info-value" id="player-name">—</span>
+                    </div>
+                    <div class="info-item" id="game-opponent">
+                        <span class="info-label">Против:</span>
+                        <span class="info-value" id="opponent-name">—</span>
+                    </div>
+                    <div class="info-item" id="game-timer-item">
+                        <span class="info-label">⏰</span>
+                        <span class="info-value" id="game-timer">20:00</span>
+                    </div>
+                    <div class="info-item" id="game-turn">
+                        <span class="info-label">Ход:</span>
+                        <span class="info-value" id="turn-indicator">—</span>
+                    </div>
+                </div>
+                <div class="spectator-controls" id="spectator-controls" style="display: none;">
+                    <button class="spectator-btn" onclick="spectatorPrev()">←</button>
+                    <span id="spectator-viewing">Наблюдение: —</span>
+                    <button class="spectator-btn" onclick="spectatorNext()">→</button>
+                </div>
             </div>
             
             <!-- Область игры -->
@@ -123,7 +144,7 @@
                 </div>
             </div>
             
-            <!-- Нижняя панель с чатом (только общий чат) -->
+            <!-- Нижняя панель с чатом -->
             <div class="chat-panels">
                 <div class="global-chat" style="width: 100%;">
                     <div class="chat-header">🌍 Общий чат</div>
@@ -145,6 +166,11 @@
             <span id="floating-code">#A7F3C1</span>
             <button class="copy-btn-small" onclick="copyRoomCode()">📋</button>
         </div>
+    </div>
+    
+    <!-- Подсказка для наблюдателя (показывается при нажатии) -->
+    <div id="spectator-hint" class="spectator-hint" style="display: none;">
+        👆 Нажмите на игровое поле, чтобы переключаться между игроками
     </div>
     
     <!-- Подключаем скрипты -->
