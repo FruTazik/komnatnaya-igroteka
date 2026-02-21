@@ -549,4 +549,133 @@ document.addEventListener('keypress', function(e) {
             sendGlobalMessage();
         }
     }
+);
+
+// Функции для наблюдателя
+let spectatorHintTimeout = null;
+
+function spectatorNext() {
+    if (!currentPlayer.isSpectator) return;
+    
+    const targetId = gameEngine.spectatorSwitch(currentPlayer.id, 'next');
+    if (targetId) {
+        // Показываем подсказку
+        showSpectatorHint();
+        
+        // Здесь можно обновить отображение игры
+        const gameState = gameEngine.getGameState(currentPlayer.id);
+        if (gameState && window.updateGameView) {
+            window.updateGameView(targetId);
+        }
+    }
+}
+
+function spectatorPrev() {
+    if (!currentPlayer.isSpectator) return;
+    
+    const targetId = gameEngine.spectatorSwitch(currentPlayer.id, 'prev');
+    if (targetId) {
+        showSpectatorHint();
+        
+        const gameState = gameEngine.getGameState(currentPlayer.id);
+        if (gameState && window.updateGameView) {
+            window.updateGameView(targetId);
+        }
+    }
+}
+
+// Показать подсказку для наблюдателя
+function showSpectatorHint() {
+    const hint = document.getElementById('spectator-hint');
+    if (hint) {
+        hint.style.display = 'block';
+        
+        if (spectatorHintTimeout) {
+            clearTimeout(spectatorHintTimeout);
+        }
+        
+        spectatorHintTimeout = setTimeout(() => {
+            hint.style.display = 'none';
+        }, 3000);
+    }
+}
+
+// Обработка клика для наблюдателя (переключение вида)
+function handleSpectatorClick(event) {
+    if (!currentPlayer.isSpectator) return;
+    
+    // Получаем координаты клика
+    const rect = event.target.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const width = rect.width;
+    
+    // Если кликнули в левую половину - предыдущий, в правую - следующий
+    if (x < width / 2) {
+        spectatorPrev();
+    } else {
+        spectatorNext();
+    }
+}
+
+// Добавляем обработчик клика для наблюдателей
+document.addEventListener('click', function(e) {
+    if (currentPlayer?.isSpectator && gameStarted) {
+        // Проверяем, что кликнули по игровому полю
+        if (e.target.closest('#game-canvas') || e.target.closest('.game-canvas')) {
+            handleSpectatorClick(e);
+        }
+    }
 });
+
+// Обновление информационной панели
+function updateGameInfo() {
+    if (!gameStarted || !currentPlayer) return;
+    
+    const gameState = gameEngine.getGameState(currentPlayer.id);
+    if (!gameState) return;
+    
+    const playerNameSpan = document.getElementById('player-name');
+    const opponentNameSpan = document.getElementById('opponent-name');
+    const turnIndicator = document.getElementById('turn-indicator');
+    const spectatorControls = document.getElementById('spectator-controls');
+    const gameOpponent = document.getElementById('game-opponent');
+    const gameTurn = document.getElementById('game-turn');
+    
+    if (currentPlayer.isSpectator) {
+        // Режим наблюдателя
+        spectatorControls.style.display = 'flex';
+        gameOpponent.style.display = 'none';
+        gameTurn.style.display = 'none';
+        
+        if (gameState.viewingPlayer) {
+            document.getElementById('spectator-viewing').textContent = 
+                `Наблюдение: ${gameState.viewingPlayer.nickname}`;
+        }
+    } else {
+        // Режим игрока
+        spectatorControls.style.display = 'none';
+        gameOpponent.style.display = 'flex';
+        gameTurn.style.display = 'flex';
+        
+        playerNameSpan.textContent = currentPlayer.nickname;
+        opponentNameSpan.textContent = currentPlayer.opponent || '—';
+        
+        if (gameState.match) {
+            const isMyTurn = gameState.isMyTurn;
+            turnIndicator.textContent = isMyTurn ? 'Ваш ход' : 'Ход соперника';
+            turnIndicator.style.color = isMyTurn ? '#27ae60' : '#e74c3c';
+        }
+    }
+}
+
+// Вызываем обновление информации при загрузке игры
+const originalLoadGame = loadGame;
+loadGame = function(gameName, config) {
+    originalLoadGame(gameName, config);
+    
+    // Обновляем информацию через секунду после загрузки
+    setTimeout(() => {
+        updateGameInfo();
+    }, 1000);
+};
+
