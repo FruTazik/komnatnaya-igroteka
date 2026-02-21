@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Комнатная Игротека</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">🎮 Комнатная Игротека</h1>
+        <p class="subtitle">Играй с друзьями в любимые игры!</p>
+        
+        <!-- Карусель с играми -->
+        <div class="games-carousel">
+            <button class="carousel-btn prev">←</button>
+            
+            <div class="games-container">
+                <div class="game-card">
+                    <div class="game-icon">🚢</div>
+                    <h3>Морской бой</h3>
+                    <p>2 игрока</p>
+                </div>
+                <div class="game-card">
+                    <div class="game-icon">❌⭕</div>
+                    <h3>Крестики-нолики</h3>
+                    <p>2 игрока</p>
+                </div>
+                <div class="game-card">
+                    <div class="game-icon">😵</div>
+                    <h3>Виселица</h3>
+                    <p>2+ игроков</p>
+                </div>
+                <div class="game-card">
+                    <div class="game-icon">🐊</div>
+                    <h3>Крокодил</h3>
+                    <p>3-6 игроков</p>
+                </div>
+                <div class="game-card">
+                    <div class="game-icon">❓</div>
+                    <h3>Данетки</h3>
+                    <p>3-6 игроков</p>
+                </div>
+                <div class="game-card">
+                    <div class="game-icon">🎩</div>
+                    <h3>Шляпа</h3>
+                    <p>4+ игроков</p>
+                </div>
+                <div class="game-card">
+                    <div class="game-icon">🤔</div>
+                    <h3>Кто я?</h3>
+                    <p>3-8 игроков</p>
+                </div>
+                <div class="game-card">
+                    <div class="game-icon">📝</div>
+                    <h3>Балда</h3>
+                    <p>2-4 игрока</p>
+                </div>
+            </div>
+            
+            <button class="carousel-btn next">→</button>
+        </div>
+        
+        <!-- Кнопка начала -->
+        <button class="start-btn" onclick="location.href='lobby.html'">Начать игру</button>
+        
+        <!-- Подвал с объяснением -->
+        <div class="footer">
+            <h3>Как играть?</h3>
+            <p>1️⃣ Нажми "Начать игру"</p>
+            <p>2️⃣ Создай комнату или введи код от друга</p>
+            <p>3️⃣ Пригласи друзей — отправь им код комнаты</p>
+            <p>4️⃣ Выбери игру и наслаждайтесь!</p>
+            <p class="small">Код комнаты выглядит так: <span class="code-example">#A7F3C1</span> — его нужно ввести друзьям</p>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>

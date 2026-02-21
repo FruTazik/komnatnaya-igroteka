@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход в комнату</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="firebase-config.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">🚪 Вход в игру</h1>
+        
+        <div class="lobby-options">
+            <!-- Создание комнаты -->
+            <div class="option-card">
+                <h2>Создать новую комнату</h2>
+                <input type="text" id="nickname-create" class="nick-input" placeholder="Введите ваш ник" maxlength="20">
+                <button class="action-btn" onclick="createRoom()">Создать комнату</button>
+            </div>
+            
+            <!-- Подключение к комнате -->
+            <div class="option-card">
+                <h2>Подключиться к комнате</h2>
+                <input type="text" id="nickname-join" class="nick-input" placeholder="Введите ваш ник" maxlength="20">
+                <input type="text" id="room-code" class="code-input" placeholder="#A7F3C1" maxlength="7" oninput="formatCode(this)">
+                <button class="action-btn" onclick="joinRoom()">Подключиться</button>
+            </div>
+        </div>
+        
+        <!-- Инструкция -->
+        <div class="footer">
+            <h3>Как подключить друга?</h3>
+            <p>🔹 Если создаёшь комнату — отправь другу код, который появится на следующем экране</p>
+            <p>🔹 Если подключаешься — попроси код у друга и введи его выше</p>
+            <p class="small">Код всегда начинается с # и состоит из 6 букв/цифр</p>
+        </div>
+    </div>
+    
+    <script src="lobby-script.js"></script>
+</body>
+</html>

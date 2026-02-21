@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Комната - Игротека</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="room-style.css">
+</head>
+<body>
+    <div class="room-container">
+        <!-- Левая панель с игроками -->
+        <div class="players-panel">
+            <h3>👥 Игроки в комнате</h3>
+            <div class="players-list" id="players-list">
+                <!-- Сюда будут добавляться игроки через JS -->
+            </div>
+            
+            <!-- Баллы игроков -->
+            <div class="scores-panel">
+                <h4>🏆 Счет</h4>
+                <div id="scores-list" class="scores-list">
+                    <!-- Сюда будут добавляться баллы -->
+                </div>
+            </div>
+            
+            <!-- Код комнаты -->
+            <div class="room-code-block">
+                <p>Код комнаты:</p>
+                <div class="code-display">
+                    <span id="room-code-display">#A7F3C1</span>
+                    <button class="copy-btn" onclick="copyRoomCode()" title="Копировать код">📋</button>
+                </div>
+                <p class="small">Нажмите на кнопку, чтобы скопировать</p>
+            </div>
+            
+            <!-- Кнопка начала игры (только для админа) -->
+            <button id="start-game-btn" class="start-game-btn" onclick="startSelectedGame()">
+                🎮 Начать игру
+            </button>
+        </div>
+        
+        <!-- Основное окно с игрой -->
+        <div class="main-content">
+            <!-- Верхняя панель с таймером и информацией -->
+            <div class="game-header">
+                <div id="game-timer" class="game-timer">⏰ 20:00</div>
+                <div id="game-status" class="game-status">Ожидание игроков...</div>
+                <div id="team-info" class="team-info"></div>
+            </div>
+            
+            <!-- Область игры -->
+            <div id="game-area" class="game-area">
+                <!-- Список игр (показывается, когда игра не выбрана) -->
+                <div id="games-selection" class="games-selection">
+                    <h2>Выберите игру</h2>
+                    <p class="admin-only" id="admin-message">👑 Только администратор может выбрать игру</p>
+                    
+                    <!-- Игры сеткой 3x3 (3 ряда по 3 игры) -->
+                    <div class="games-grid">
+                        <!-- Ряд 1 -->
+                        <div class="games-row">
+                            <div class="game-option" onclick="selectGame('sea-battle')" data-game="sea-battle">
+                                <div class="game-icon">🚢</div>
+                                <h3>Морской бой</h3>
+                                <p>2-8 игроков • 40 очков</p>
+                            </div>
+                            <div class="game-option" onclick="selectGame('tic-tac-toe')" data-game="tic-tac-toe">
+                                <div class="game-icon">❌⭕</div>
+                                <h3>Крестики-нолики</h3>
+                                <p>2-8 игроков • 10 очков</p>
+                            </div>
+                            <div class="game-option" onclick="selectGame('gallows')" data-game="gallows">
+                                <div class="game-icon">😵</div>
+                                <h3>Виселица</h3>
+                                <p>2-8 игроков • 15 очков</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Ряд 2 -->
+                        <div class="games-row">
+                            <div class="game-option" onclick="selectGame('crocodile')" data-game="crocodile">
+                                <div class="game-icon">🐊</div>
+                                <h3>Крокодил</h3>
+                                <p>3-8 игроков • 25 очков</p>
+                            </div>
+                            <div class="game-option" onclick="selectGame('danetki')" data-game="danetki">
+                                <div class="game-icon">❓</div>
+                                <h3>Данетки</h3>
+                                <p>3-8 игроков • 20 очков</p>
+                            </div>
+                            <div class="game-option" onclick="selectGame('hat')" data-game="hat">
+                                <div class="game-icon">🎩</div>
+                                <h3>Шляпа</h3>
+                                <p>4-8 игроков • 25 очков</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Ряд 3 -->
+                        <div class="games-row">
+                            <div class="game-option" onclick="selectGame('who-am-i')" data-game="who-am-i">
+                                <div class="game-icon">🤔</div>
+                                <h3>Кто я?</h3>
+                                <p>3-8 игроков • 15 очков</p>
+                            </div>
+                            <div class="game-option" onclick="selectGame('balda')" data-game="balda">
+                                <div class="game-icon">📝</div>
+                                <h3>Балда</h3>
+                                <p>2-4 игроков • 25 очков</p>
+                            </div>
+                            <div class="game-option coming-soon">
+                                <div class="game-icon">🎲</div>
+                                <h3>Скоро...</h3>
+                                <p>Новые игры</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Сюда будет загружаться игра -->
+                <div id="game-canvas" class="game-canvas" style="display: none;">
+                    <!-- Здесь будет отображаться игра -->
+                </div>
+            </div>
+            
+            <!-- Нижняя панель с чатами -->
+            <div class="chat-panels">
+                <!-- Командный чат (скрыт до начала игры) -->
+                <div class="team-chat" id="team-chat" style="display: none;">
+                    <div class="chat-header">
+                        <span>👥 Командный чат</span>
+                        <span class="team-badge" id="team-badge">—</span>
+                    </div>
+                    <div class="chat-messages" id="team-chat-messages">
+                        <div class="message system">
+                            <div style="color: #666; font-style: italic;">💬 Чат вашей команды</div>
+                        </div>
+                    </div>
+                    <div class="chat-input">
+                        <input type="text" id="team-chat-input" placeholder="Сообщение команде...">
+                        <button onclick="sendTeamMessage()">➤</button>
+                    </div>
+                </div>
+                
+                <!-- Общий чат -->
+                <div class="global-chat">
+                    <div class="chat-header">🌍 Общий чат</div>
+                    <div class="chat-messages" id="global-chat-messages">
+                        <div class="message system">
+                            <div style="color: #666; font-style: italic;">👋 Добро пожаловать в общий чат!</div>
+                        </div>
+                    </div>
+                    <div class="chat-input">
+                        <input type="text" id="global-chat-input" placeholder="Сообщение всем...">
+                        <button onclick="sendGlobalMessage()">➤</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Плавающий код комнаты -->
+        <div class="floating-code">
+            <span id="floating-code">#A7F3C1</span>
+            <button class="copy-btn-small" onclick="copyRoomCode()">📋</button>
+        </div>
+    </div>
+    
+    <!-- Настройки режима игры (появляются под выбранной игрой) -->
+    <div id="game-mode-settings" class="game-mode-settings" style="display: none;">
+        <h3>🎯 Выберите режим игры:</h3>
+        <div class="mode-options" id="mode-options">
+            <!-- Сюда будут добавляться опции -->
+        </div>
+    </div>
+    
+    <!-- Подключаем скрипты -->
+    <script src="game-engine.js"></script>
+    <script src="room-script.js"></script>
+</body>
+</html>
