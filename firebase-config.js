@@ -1,15 +1,15 @@
-// Firebase конфигурация
+// Firebase конфигурация - ТВОИ РЕАЛЬНЫЕ ДАННЫЕ
 const firebaseConfig = {
-    apiKey: "FrutazAIKey",
+    apiKey: "AIzaSyAKSN02OzCvjrqgcJ3ijYrTW3M3V6OvEJo",
     authDomain: "komnatnaya-igroteka.firebaseapp.com",
-    databaseURL: "https://komnatnaya-igroteka-default-rtdb.firebaseio.com",
+    databaseURL: "https://komnatnaya-igroteka-default-rtdb.europe-west1.firebasedatabase.app",
     projectId: "komnatnaya-igroteka",
-    storageBucket: "komnatnaya-igroteka.appspot.com",
-    messagingSenderId: "123456789",
-    appId: "1:123456789:web:abcdef"
+    storageBucket: "komnatnaya-igroteka.firebasestorage.app",
+    messagingSenderId: "326053063088",
+    appId: "1:326053063088:web:40bf1f418d01063fcfce75"
 };
 
-// Инициализация Firebase
+// Инициализация Firebase (используем старый способ для совместимости)
 firebase.initializeApp(firebaseConfig);
 
 // Получаем ссылки на базу данных
@@ -29,3 +29,13 @@ function generateRoomCode() {
 function getCurrentTimestamp() {
     return firebase.database.ServerValue.TIMESTAMP;
 }
+
+// Функция для проверки подключения
+function checkFirebaseConnection() {
+    console.log('✅ Firebase подключен!');
+    console.log('Project ID:', firebaseConfig.projectId);
+    console.log('Database URL:', firebaseConfig.databaseURL);
+}
+
+// Вызываем при загрузке
+checkFirebaseConnection();
