@@ -1,6 +1,6 @@
 // Firebase конфигурация
 const firebaseConfig = {
-    apiKey: "AIzaSys", // ВСТАВЬ СВОИ ДАННЫЕ!
+    apiKey: "FrutazAIKey",
     authDomain: "komnatnaya-igroteka.firebaseapp.com",
     databaseURL: "https://komnatnaya-igroteka-default-rtdb.firebaseio.com",
     projectId: "komnatnaya-igroteka",
