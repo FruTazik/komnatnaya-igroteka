@@ -6,11 +6,6 @@
     <title>Комната - Игротека</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="room-style.css">
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-
-    <!-- Твой конфиг (после Firebase SDK) -->
-    <script src="firebase-config.js"></script>
 </head>
 <body>
     <div class="room-container">
@@ -21,7 +16,7 @@
                 <!-- Сюда будут добавляться игроки через JS -->
             </div>
             
-            <!-- Баллы игроков -->
+            <!-- Счет игроков -->
             <div class="scores-panel">
                 <h4>🏆 Счет</h4>
                 <div id="scores-list" class="scores-list">
@@ -51,7 +46,7 @@
             <div class="game-header">
                 <div id="game-timer" class="game-timer">⏰ 20:00</div>
                 <div id="game-status" class="game-status">Ожидание игроков...</div>
-                <div id="team-info" class="team-info"></div>
+                <div id="game-info" class="game-info"></div>
             </div>
             
             <!-- Область игры -->
@@ -128,27 +123,9 @@
                 </div>
             </div>
             
-            <!-- Нижняя панель с чатами -->
+            <!-- Нижняя панель с чатом (только общий чат) -->
             <div class="chat-panels">
-                <!-- Командный чат (скрыт до начала игры) -->
-                <div class="team-chat" id="team-chat" style="display: none;">
-                    <div class="chat-header">
-                        <span>👥 Командный чат</span>
-                        <span class="team-badge" id="team-badge">—</span>
-                    </div>
-                    <div class="chat-messages" id="team-chat-messages">
-                        <div class="message system">
-                            <div style="color: #666; font-style: italic;">💬 Чат вашей команды</div>
-                        </div>
-                    </div>
-                    <div class="chat-input">
-                        <input type="text" id="team-chat-input" placeholder="Сообщение команде...">
-                        <button onclick="sendTeamMessage()">➤</button>
-                    </div>
-                </div>
-                
-                <!-- Общий чат -->
-                <div class="global-chat">
+                <div class="global-chat" style="width: 100%;">
                     <div class="chat-header">🌍 Общий чат</div>
                     <div class="chat-messages" id="global-chat-messages">
                         <div class="message system">
@@ -170,15 +147,10 @@
         </div>
     </div>
     
-    <!-- Настройки режима игры (появляются под выбранной игрой) -->
-    <div id="game-mode-settings" class="game-mode-settings" style="display: none;">
-        <h3>🎯 Выберите режим игры:</h3>
-        <div class="mode-options" id="mode-options">
-            <!-- Сюда будут добавляться опции -->
-        </div>
-    </div>
-    
     <!-- Подключаем скрипты -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="firebase-config.js"></script>
     <script src="game-engine.js"></script>
     <script src="room-script.js"></script>
 </body>
