@@ -1,114 +1,98 @@
 // Морской бой
+let seaBattleGame = {
+    playerField: [],
+    enemyField: [],
+    ships: [],
+    myTurn: false,
+    matchId: null,
+    opponent: null,
+    placementPhase: true,
+    placementTime: 60,
+    gameTime: 540, // 9 минут
+    timer: null,
+    selectedShip: null,
+    shipOrientation: 'horizontal',
+    myShips: [
+        { size: 4, count: 1, placed: false },
+        { size: 3, count: 2, placed: false },
+        { size: 2, count: 3, placed: false },
+        { size: 1, count: 4, placed: false }
+    ],
+    myPlacedShips: [],
+    enemyShips: [],
+    myHits: [],
+    enemyHits: [],
+    gameOver: false
+};
+
 function initSeaBattle(config) {
-    console.log('Инициализация морского боя', config);
+    console.log('🎮 Морской бой инициализирован', config);
     
     const canvas = document.getElementById('game-canvas');
+    
+    // Находим матч игрока
+    const match = config.matches.find(m => 
+        m.player1.id === currentPlayer.id || m.player2.id === currentPlayer.id
+    );
+    
+    if (match) {
+        seaBattleGame.matchId = match.id;
+        seaBattleGame.opponent = match.player1.id === currentPlayer.id ? 
+            match.player2.nickname : match.player1.nickname;
+        seaBattleGame.myTurn = match.currentTurn === currentPlayer.id;
+    }
+    
+    // Создаем интерфейс
     canvas.innerHTML = `
         <div class="sea-battle-container">
-            <div class="battlefield">
-                <div class="player-field" id="player-field"></div>
-                <div class="enemy-field" id="enemy-field"></div>
+            <div class="placement-area" id="placement-area">
+                <h3>Расстановка кораблей (${seaBattleGame.placementTime}с)</h3>
+                <div class="ships-panel" id="ships-panel">
+                    <div class="ships-list">
+                        ${renderShipsList()}
+                    </div>
+                    <button class="rotate-btn" onclick="rotateShip()">↻ Повернуть</button>
+                </div>
             </div>
-            <div class="ship-placement" id="ship-placement" style="display: none;">
-                <h3>Расстановка кораблей</h3>
-                <div class="ships-list" id="ships-list"></div>
-                <button onclick="rotateShip()">🔄 Повернуть</button>
+            <div class="battlefields">
+                <div class="field-container">
+                    <h4>Ваше поле</h4>
+                    <div class="battlefield my-field" id="my-field"></div>
+                </div>
+                <div class="field-container">
+                    <h4>Поле противника (${seaBattleGame.opponent})</h4>
+                    <div class="battlefield enemy-field" id="enemy-field"></div>
+                </div>
             </div>
         </div>
     `;
     
-    // Создаем поля 10x10
-    createBattleField('player-field');
-    createBattleField('enemy-field');
+    // Создаем поля
+    createField('my-field', true);
+    createField('enemy-field', false);
     
-    // Показываем расстановку только для игроков (не наблюдателей)
-    if (!config.spectators.includes(getCurrentPlayer())) {
-        document.getElementById('ship-placement').style.display = 'block';
-        showShipsToPlace();
-    }
+    // Запускаем таймер расстановки
+    startPlacementTimer();
 }
 
-function createBattleField(fieldId) {
+function renderShipsList() {
+    let html = '';
+    seaBattleGame.myShips.forEach((ship, index) => {
+        for (let i = 0; i < ship.count; i++) {
+            if (!ship.placed) {
+                html += `<div class="ship-item" data-size="${ship.size}" data-index="${index}" draggable="true" ondragstart="dragShip(event)">`;
+                for (let j = 0; j < ship.size; j++) {
+                    html += '🚢';
+                }
+                html += '</div>';
+            }
+        }
+    });
+    return html;
+}
+
+function createField(fieldId, isMyField) {
     const field = document.getElementById(fieldId);
     field.innerHTML = '';
     
-    for (let i = 0; i < 10; i++) {
-        for (let j = 0; j < 10; j++) {
-            const cell = document.createElement('div');
-            cell.className = 'battle-cell';
-            cell.dataset.x = i;
-            cell.dataset.y = j;
-            cell.onclick = () => cellClick(fieldId, i, j);
-            field.appendChild(cell);
-        }
-    }
-}
-
-function cellClick(fieldId, x, y) {
-    const currentPlayer = getCurrentPlayer();
-    
-    if (currentPlayer.isSpectator) {
-        // Наблюдатель переключает вид
-        spectatorSwitchView(currentPlayer, x, y);
-        return;
-    }
-    
-    // Игрок голосует за ход
-    const team = gameEngine.teams.find(t => t.players.includes(currentPlayer));
-    if (team) {
-        const allAgreed = gameEngine.voteForMove(team.id, currentPlayer.id, {x, y, field: fieldId});
-        
-        if (allAgreed) {
-            // Все в команде согласны, делаем ход
-            makeMove(team.agreedMove);
-        } else {
-            // Показываем, кто за какой ход голосует
-            showVotes(team);
-        }
-    }
-}
-
-function showVotes(team) {
-    // Подсвечиваем клетки, за которые голосуют игроки
-    Object.entries(team.currentVotes).forEach(([playerId, move]) => {
-        const player = gameEngine.players.find(p => p.id == playerId);
-        // Подсветка на поле
-    });
-}
-
-function makeMove(move) {
-    console.log('Делаем ход:', move);
-    // Логика хода в морском бое
-}
-
-function rotateShip() {
-    // Поворот корабля при расстановке
-    console.log('Поворот корабля');
-}
-
-function showShipsToPlace() {
-    const shipsList = document.getElementById('ships-list');
-    shipsList.innerHTML = '';
-    
-    const ships = [
-        {size: 4, count: 1},
-        {size: 3, count: 2},
-        {size: 2, count: 3},
-        {size: 1, count: 4}
-    ];
-    
-    ships.forEach(ship => {
-        for (let i = 0; i < ship.count; i++) {
-            const shipEl = document.createElement('div');
-            shipEl.className = 'ship-to-place';
-            shipEl.innerHTML = '🚢'.repeat(ship.size);
-            shipEl.draggable = true;
-            shipsList.appendChild(shipEl);
-        }
-    });
-}
-
-function getCurrentPlayer() {
-    // В реальности нужно получать текущего игрока из сессии
-    return gameEngine.players[0];
-}
+    for (let i = 0; i < 10; i
