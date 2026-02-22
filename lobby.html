@@ -5,209 +5,81 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Вход в комнату - Игротека</title>
     
-    <!-- Подключение стилей -->
+    <!-- Стили -->
     <link rel="stylesheet" href="style.css">
     
-    <!-- Firebase SDK (ВАЖНО: именно в этом порядке) -->
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     
-    <!-- Твой конфиг Firebase (после SDK) -->
+    <!-- Конфиг Firebase -->
     <script src="firebase-config.js"></script>
     
     <style>
-        /* Дополнительные стили для лобби */
-        .rooms-hint {
-            text-align: center;
-            margin-top: 20px;
+        .debug-console {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.8);
+            color: #0f0;
             padding: 10px;
-            background: rgba(102, 126, 234, 0.1);
-            border-radius: 10px;
-            color: #667eea;
-            font-size: 0.9em;
-        }
-        
-        .rooms-hint span {
-            font-weight: bold;
-            background: #667eea;
-            color: white;
-            padding: 2px 8px;
-            border-radius: 12px;
-            margin-left: 5px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            max-width: 400px;
+            max-height: 200px;
+            overflow: auto;
+            z-index: 9999;
+            display: none;
         }
     </style>
 </head>
 <body>
-    <div class="room-container">
-        <!-- Левая панель с игроками -->
-        <div class="players-panel">
-            <h3>👥 Игроки в комнате</h3>
-            <div class="players-list" id="players-list">
-                <!-- Сюда будут добавляться игроки через JS -->
-            </div>
-            
-            <!-- Счет игроков -->
-            <div class="scores-panel">
-                <h4>🏆 Счет</h4>
-                <div id="scores-list" class="scores-list">
-                    <!-- Сюда будут добавляться баллы -->
-                </div>
-            </div>
-            
-            <!-- Код комнаты -->
-            <div class="room-code-block">
-                <p>Код комнаты:</p>
-                <div class="code-display">
-                    <span id="room-code-display">#A7F3C1</span>
-                    <button class="copy-btn" onclick="copyRoomCode()" title="Копировать код">📋</button>
-                </div>
-                <p class="small">Нажмите на кнопку, чтобы скопировать</p>
-            </div>
-            
-            <!-- Кнопка начала игры (только для админа) -->
-            <button id="start-game-btn" class="start-game-btn" onclick="startSelectedGame()">
-                🎮 Начать игру
-            </button>
-        </div>
+    <div class="debug-console" id="debugConsole"></div>
+    
+    <div class="container">
+        <h1 class="title">🚪 Вход в игру</h1>
         
-        <!-- Основное окно с игрой -->
-        <div class="main-content">
-            <!-- Верхняя панель с информацией об игре -->
-            <div class="game-header">
-                <div class="game-title" id="game-title">🎮 Выберите игру</div>
-                <div class="game-info-panel" id="game-info-panel">
-                    <div class="info-item" id="game-current-player">
-                        <span class="info-label">Вы:</span>
-                        <span class="info-value" id="player-name">—</span>
-                    </div>
-                    <div class="info-item" id="game-opponent">
-                        <span class="info-label">Против:</span>
-                        <span class="info-value" id="opponent-name">—</span>
-                    </div>
-                    <div class="info-item" id="game-timer-item">
-                        <span class="info-label">⏰</span>
-                        <span class="info-value" id="game-timer">20:00</span>
-                    </div>
-                    <div class="info-item" id="game-turn">
-                        <span class="info-label">Ход:</span>
-                        <span class="info-value" id="turn-indicator">—</span>
-                    </div>
-                </div>
-                <div class="spectator-controls" id="spectator-controls" style="display: none;">
-                    <button class="spectator-btn" onclick="spectatorPrev()">←</button>
-                    <span id="spectator-viewing">Наблюдение: —</span>
-                    <button class="spectator-btn" onclick="spectatorNext()">→</button>
-                </div>
+        <div class="lobby-options">
+            <!-- Создание комнаты -->
+            <div class="option-card">
+                <h2>Создать новую комнату</h2>
+                <input type="text" id="nickname-create" class="nick-input" placeholder="Введите ваш ник" maxlength="20">
+                <button class="action-btn" onclick="createRoom()">Создать комнату</button>
             </div>
             
-            <!-- Область игры -->
-            <div id="game-area" class="game-area">
-                <!-- Список игр (показывается, когда игра не выбрана) -->
-                <div id="games-selection" class="games-selection">
-                    <h2>Выберите игру</h2>
-                    <p class="admin-only" id="admin-message">👑 Только администратор может выбрать игру</p>
-                    
-                    <!-- Игры сеткой 3x3 (3 ряда по 3 игры) -->
-                    <div class="games-grid">
-                        <!-- Ряд 1 -->
-                        <div class="games-row">
-                            <div class="game-option" onclick="selectGame('sea-battle')" data-game="sea-battle">
-                                <div class="game-icon">🚢</div>
-                                <h3>Морской бой</h3>
-                                <p>2-8 игроков • 40 очков</p>
-                            </div>
-                            <div class="game-option" onclick="selectGame('tic-tac-toe')" data-game="tic-tac-toe">
-                                <div class="game-icon">❌⭕</div>
-                                <h3>Крестики-нолики</h3>
-                                <p>2-8 игроков • 10 очков</p>
-                            </div>
-                            <div class="game-option" onclick="selectGame('gallows')" data-game="gallows">
-                                <div class="game-icon">😵</div>
-                                <h3>Виселица</h3>
-                                <p>2-8 игроков • 15 очков</p>
-                            </div>
-                        </div>
-                        
-                        <!-- Ряд 2 -->
-                        <div class="games-row">
-                            <div class="game-option" onclick="selectGame('crocodile')" data-game="crocodile">
-                                <div class="game-icon">🐊</div>
-                                <h3>Крокодил</h3>
-                                <p>3-8 игроков • 25 очков</p>
-                            </div>
-                            <div class="game-option" onclick="selectGame('danetki')" data-game="danetki">
-                                <div class="game-icon">❓</div>
-                                <h3>Данетки</h3>
-                                <p>3-8 игроков • 20 очков</p>
-                            </div>
-                            <div class="game-option" onclick="selectGame('hat')" data-game="hat">
-                                <div class="game-icon">🎩</div>
-                                <h3>Шляпа</h3>
-                                <p>4-8 игроков • 25 очков</p>
-                            </div>
-                        </div>
-                        
-                        <!-- Ряд 3 -->
-                        <div class="games-row">
-                            <div class="game-option" onclick="selectGame('who-am-i')" data-game="who-am-i">
-                                <div class="game-icon">🤔</div>
-                                <h3>Кто я?</h3>
-                                <p>3-8 игроков • 15 очков</p>
-                            </div>
-                            <div class="game-option" onclick="selectGame('balda')" data-game="balda">
-                                <div class="game-icon">📝</div>
-                                <h3>Балда</h3>
-                                <p>2-4 игроков • 25 очков</p>
-                            </div>
-                            <div class="game-option coming-soon">
-                                <div class="game-icon">🎲</div>
-                                <h3>Скоро...</h3>
-                                <p>Новые игры</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Сюда будет загружаться игра -->
-                <div id="game-canvas" class="game-canvas" style="display: none;">
-                    <!-- Здесь будет отображаться игра -->
-                </div>
-            </div>
-            
-            <!-- Нижняя панель с чатом -->
-            <div class="chat-panels">
-                <div class="global-chat" style="width: 100%;">
-                    <div class="chat-header">🌍 Общий чат</div>
-                    <div class="chat-messages" id="global-chat-messages">
-                        <div class="message system">
-                            <div style="color: #666; font-style: italic;">👋 Добро пожаловать в общий чат!</div>
-                        </div>
-                    </div>
-                    <div class="chat-input">
-                        <input type="text" id="global-chat-input" placeholder="Сообщение всем...">
-                        <button onclick="sendGlobalMessage()">➤</button>
-                    </div>
-                </div>
+            <!-- Подключение к комнате -->
+            <div class="option-card">
+                <h2>Подключиться к комнате</h2>
+                <input type="text" id="nickname-join" class="nick-input" placeholder="Введите ваш ник" maxlength="20">
+                <input type="text" id="room-code" class="code-input" placeholder="#A7F3C1" maxlength="7" oninput="formatCode(this)">
+                <button class="action-btn" onclick="joinRoom()">Подключиться</button>
             </div>
         </div>
         
-        <!-- Плавающий код комнаты -->
-        <div class="floating-code">
-            <span id="floating-code">#A7F3C1</span>
-            <button class="copy-btn-small" onclick="copyRoomCode()">📋</button>
+        <!-- Инструкция -->
+        <div class="footer">
+            <h3>Как подключить друга?</h3>
+            <p>🔹 Если создаёшь комнату — отправь другу код, который появится на следующем экране</p>
+            <p>🔹 Если подключаешься — попроси код у друга и введи его выше</p>
+            <p class="small">Код всегда начинается с # и состоит из 6 букв/цифр</p>
         </div>
     </div>
     
-    <!-- Подсказка для наблюдателя (показывается при нажатии) -->
-    <div id="spectator-hint" class="spectator-hint" style="display: none;">
-        👆 Нажмите на игровое поле, чтобы переключаться между игроками
-    </div>
+    <script src="lobby-script.js"></script>
     
-    <!-- Подключаем скрипты -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-    <script src="firebase-config.js"></script>
-    <script src="game-engine.js"></script>
-    <script src="room-script.js"></script>
+    <script>
+        // Отладка
+        console.log('🏁 lobby.html загружен');
+        console.log('Текущий localStorage:', {
+            nickname: localStorage.getItem('playerNickname'),
+            roomCode: localStorage.getItem('roomCode'),
+            roomId: localStorage.getItem('roomId'),
+            isAdmin: localStorage.getItem('isAdmin')
+        });
+        
+        // Очистка localStorage при загрузке (для теста)
+        // localStorage.clear();
+    </script>
 </body>
 </html>
