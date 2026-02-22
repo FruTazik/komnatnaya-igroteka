@@ -9,12 +9,19 @@ const firebaseConfig = {
     appId: "1:326053063088:web:40bf1f418d01063fcfce75"
 };
 
-// Инициализация Firebase (используем старый способ для совместимости)
+// Инициализация Firebase
 firebase.initializeApp(firebaseConfig);
 
 // Получаем ссылки на базу данных
 const database = firebase.database();
 const roomsRef = database.ref('rooms');
+
+// Делаем глобальными
+window.database = database;
+window.roomsRef = roomsRef;
+
+console.log('✅ Firebase подключен!');
+console.log('📁 База данных:', firebaseConfig.databaseURL);
 
 // Вспомогательные функции
 function generateRoomCode() {
@@ -30,12 +37,6 @@ function getCurrentTimestamp() {
     return firebase.database.ServerValue.TIMESTAMP;
 }
 
-// Функция для проверки подключения
-function checkFirebaseConnection() {
-    console.log('✅ Firebase подключен!');
-    console.log('Project ID:', firebaseConfig.projectId);
-    console.log('Database URL:', firebaseConfig.databaseURL);
-}
-
-// Вызываем при загрузке
-checkFirebaseConnection();
+// Делаем функции глобальными
+window.generateRoomCode = generateRoomCode;
+window.getCurrentTimestamp = getCurrentTimestamp;
