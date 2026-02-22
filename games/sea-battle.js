@@ -35,41 +35,49 @@ function initSeaBattle(config) {
         return;
     }
     
-    // Очищаем canvas
+    // Очищаем canvas и показываем его
     canvas.innerHTML = '';
-    canvas.style.display = 'block';
+    canvas.style.display = 'flex';
+    canvas.style.justifyContent = 'center';
+    canvas.style.alignItems = 'center';
     
     // Находим матч игрока
-    const match = config.matches.find(m => 
-        m.player1.id === currentPlayer.id || m.player2.id === currentPlayer.id
-    );
+    let match = null;
+    if (config && config.matches) {
+        match = Object.values(config.matches).find(m => 
+            (m.player1 && m.player1.id === currentPlayer.id) || 
+            (m.player2 && m.player2.id === currentPlayer.id)
+        );
+    }
     
     if (match) {
         seaBattleGame.matchId = match.id;
         seaBattleGame.opponent = match.player1.id === currentPlayer.id ? 
             match.player2.nickname : match.player1.nickname;
         seaBattleGame.myTurn = match.currentTurn === currentPlayer.id;
+    } else {
+        seaBattleGame.opponent = 'противник';
     }
     
     // Создаем интерфейс
     canvas.innerHTML = `
         <div class="sea-battle-container">
             <div class="placement-area" id="placement-area">
-                <h3>Расстановка кораблей <span id="placement-timer">60</span>с</h3>
-                <div class="ships-panel" id="ships-panel">
+                <h3>⚓ Расстановка кораблей <span id="placement-timer">60</span>с</h3>
+                <div class="ships-panel">
                     <div class="ships-list" id="ships-list">
                         ${renderShipsList()}
                     </div>
-                    <button class="rotate-btn" onclick="rotateShip()">↻ Повернуть (горизонтально)</button>
+                    <button class="rotate-btn" onclick="window.rotateShip()">↻ Повернуть (горизонтально)</button>
                 </div>
             </div>
             <div class="battlefields">
                 <div class="field-container">
-                    <h4>Ваше поле</h4>
+                    <h4>⚓ Ваше поле</h4>
                     <div class="battlefield my-field" id="my-field"></div>
                 </div>
                 <div class="field-container">
-                    <h4>Поле противника (${seaBattleGame.opponent})</h4>
+                    <h4>🎯 Поле противника (${seaBattleGame.opponent})</h4>
                     <div class="battlefield enemy-field" id="enemy-field"></div>
                 </div>
             </div>
@@ -80,9 +88,11 @@ function initSeaBattle(config) {
     seaBattleGame.playerField = Array(10).fill().map(() => Array(10).fill(null));
     seaBattleGame.enemyField = Array(10).fill().map(() => Array(10).fill(null));
     
-    // Создаем поля
-    createField('my-field', true);
-    createField('enemy-field', false);
+    // Создаем поля с небольшой задержкой для гарантии
+    setTimeout(() => {
+        createField('my-field', true);
+        createField('enemy-field', false);
+    }, 100);
     
     // Запускаем таймер расстановки
     startPlacementTimer();
@@ -92,21 +102,25 @@ function renderShipsList() {
     let html = '';
     seaBattleGame.myShips.forEach((ship, index) => {
         for (let i = 0; i < ship.count - ship.placed; i++) {
-            html += `<div class="ship-item" data-size="${ship.size}" data-index="${index}" draggable="true" ondragstart="dragShip(event)">`;
+            html += `<div class="ship-item" data-size="${ship.size}" data-index="${index}" draggable="true" ondragstart="window.dragShip(event)">`;
             for (let j = 0; j < ship.size; j++) {
                 html += '🚢';
             }
             html += '</div>';
         }
     });
-    return html;
+    return html || '<div class="no-ships">Все корабли расставлены!</div>';
 }
 
 function createField(fieldId, isMyField) {
     const field = document.getElementById(fieldId);
-    if (!field) return;
+    if (!field) {
+        console.error(`Field ${fieldId} not found`);
+        return;
+    }
     
     field.innerHTML = '';
+    field.style.display = 'grid';
     
     for (let i = 0; i < 10; i++) {
         for (let j = 0; j < 10; j++) {
@@ -117,39 +131,56 @@ function createField(fieldId, isMyField) {
             
             if (isMyField) {
                 cell.addEventListener('dragover', (e) => e.preventDefault());
-                cell.addEventListener('drop', (e) => dropShip(e, i, j));
-                cell.addEventListener('mouseenter', () => highlightCell(i, j, true));
-                cell.addEventListener('mouseleave', () => highlightCell(i, j, false));
+                cell.addEventListener('drop', (e) => window.dropShip(e, i, j));
+                cell.addEventListener('mouseenter', () => window.highlightCell(i, j, true));
+                cell.addEventListener('mouseleave', () => window.highlightCell(i, j, false));
+                
+                // Если клетка уже содержит корабль (при перерисовке)
+                if (seaBattleGame.playerField[i][j] === 'ship') {
+                    cell.classList.add('ship-placed');
+                }
             } else {
-                cell.addEventListener('click', () => makeMove(i, j));
-                cell.addEventListener('mouseenter', () => highlightCell(i, j, false));
-                cell.addEventListener('mouseleave', () => highlightCell(i, j, false));
+                cell.addEventListener('click', () => window.makeMove(i, j));
+                cell.addEventListener('mouseenter', () => window.highlightCell(i, j, false));
+                cell.addEventListener('mouseleave', () => window.highlightCell(i, j, false));
+                
+                // Если клетка уже была атакована
+                if (seaBattleGame.enemyField[i][j] === 'hit') {
+                    cell.classList.add('hit');
+                } else if (seaBattleGame.enemyField[i][j] === 'miss') {
+                    cell.classList.add('miss');
+                }
             }
             
             field.appendChild(cell);
         }
     }
+    
+    console.log(`Field ${fieldId} created`);
 }
 
-function highlightCell(row, col, isMyField) {
+// Делаем функции глобальными
+window.highlightCell = function(row, col, isMyField) {
     const fieldId = isMyField ? 'my-field' : 'enemy-field';
     const cell = document.querySelector(`#${fieldId} [data-row="${row}"][data-col="${col}"]`);
     if (cell && !cell.classList.contains('hit') && !cell.classList.contains('miss')) {
         cell.style.backgroundColor = '#5dade2';
+        cell.style.transform = 'scale(1.05)';
         setTimeout(() => {
             if (!cell.classList.contains('hit') && !cell.classList.contains('miss')) {
                 cell.style.backgroundColor = '';
+                cell.style.transform = 'scale(1)';
             }
         }, 200);
     }
-}
+};
 
-function dragShip(e) {
+window.dragShip = function(e) {
     e.dataTransfer.setData('text/plain', e.target.dataset.size);
     e.dataTransfer.setData('index', e.target.dataset.index);
-}
+};
 
-function dropShip(e, row, col) {
+window.dropShip = function(e, row, col) {
     e.preventDefault();
     
     const size = parseInt(e.dataTransfer.getData('text/plain'));
@@ -158,7 +189,7 @@ function dropShip(e, row, col) {
     if (canPlaceShip(row, col, size)) {
         placeShip(row, col, size, shipIndex);
     }
-}
+};
 
 function canPlaceShip(row, col, size) {
     if (seaBattleGame.shipOrientation === 'horizontal') {
@@ -210,19 +241,22 @@ function placeShip(row, col, size, shipIndex) {
     checkAllShipsPlaced();
 }
 
-function rotateShip() {
+window.rotateShip = function() {
     seaBattleGame.shipOrientation = seaBattleGame.shipOrientation === 'horizontal' ? 'vertical' : 'horizontal';
     const rotateBtn = document.querySelector('.rotate-btn');
     if (rotateBtn) {
         rotateBtn.textContent = `↻ Повернуть (${seaBattleGame.shipOrientation === 'horizontal' ? 'горизонтально' : 'вертикально'})`;
     }
-}
+};
 
 function checkAllShipsPlaced() {
     const allPlaced = seaBattleGame.myShips.every(ship => ship.placed === ship.count);
     if (allPlaced && seaBattleGame.placementPhase) {
         setTimeout(() => {
-            document.getElementById('placement-area').style.display = 'none';
+            const placementArea = document.getElementById('placement-area');
+            if (placementArea) {
+                placementArea.style.display = 'none';
+            }
             document.querySelector('.battlefields').style.width = '100%';
             startGameTimer();
             seaBattleGame.placementPhase = false;
@@ -240,7 +274,10 @@ function startPlacementTimer() {
         
         if (seaBattleGame.placementTime <= 0) {
             clearInterval(seaBattleGame.placementTimer);
-            document.getElementById('placement-area').style.display = 'none';
+            const placementArea = document.getElementById('placement-area');
+            if (placementArea) {
+                placementArea.style.display = 'none';
+            }
             document.querySelector('.battlefields').style.width = '100%';
             startGameTimer();
             seaBattleGame.placementPhase = false;
@@ -271,7 +308,7 @@ function startGameTimer() {
     }, 1000);
 }
 
-function makeMove(row, col) {
+window.makeMove = function(row, col) {
     if (seaBattleGame.placementPhase || !seaBattleGame.myTurn || seaBattleGame.gameOver) return;
     
     const cell = document.querySelector(`#enemy-field [data-row="${row}"][data-col="${col}"]`);
@@ -287,6 +324,7 @@ function makeMove(row, col) {
     
     if (isHit) {
         cell.classList.add('hit');
+        seaBattleGame.enemyField[row][col] = 'hit';
         seaBattleGame.myHits.push({ row, col });
         playSound('boom_sound');
         
@@ -297,6 +335,7 @@ function makeMove(row, col) {
         }
     } else {
         cell.classList.add('miss');
+        seaBattleGame.enemyField[row][col] = 'miss';
         playSound('no_boom_sound');
     }
     
@@ -305,7 +344,7 @@ function makeMove(row, col) {
     if (checkVictory()) {
         endGame(true);
     }
-}
+};
 
 function checkVictory() {
     return seaBattleGame.myHits.length >= 20;
@@ -337,18 +376,20 @@ function showGameResult(win) {
         <h2>${win ? '🏆 Победа!' : '💔 Поражение'}</h2>
         <p>Ваши попадания: ${seaBattleGame.myHits.length}</p>
         <p>Попадания противника: ${seaBattleGame.enemyHits.length}</p>
-        <button onclick="closeGameResult()">Продолжить наблюдение</button>
+        <button onclick="window.closeGameResult()">Продолжить наблюдение</button>
     `;
     document.body.appendChild(resultDiv);
 }
 
-function closeGameResult() {
+window.closeGameResult = function() {
     document.querySelector('.game-result')?.remove();
     if (currentPlayer) {
         currentPlayer.isSpectator = true;
-        updateGameInfo();
+        if (window.updateGameInfo) {
+            window.updateGameInfo();
+        }
     }
-}
+};
 
 function playSound(soundName) {
     console.log(`🔊 Звук: ${soundName}`);
@@ -357,6 +398,3 @@ function playSound(soundName) {
 
 // Делаем функции глобальными
 window.initSeaBattle = initSeaBattle;
-window.rotateShip = rotateShip;
-window.dragShip = dragShip;
-window.closeGameResult = closeGameResult;
