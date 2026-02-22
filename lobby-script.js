@@ -23,24 +23,22 @@ async function createRoom() {
     }
     
     try {
-        // Проверяем подключение к Firebase
+        console.log('🚀 Создание комнаты для:', nickname);
+        
+        // Проверяем Firebase
         if (typeof roomsRef === 'undefined') {
-            console.error('Firebase не подключен');
-            alert('Ошибка подключения к базе данных');
-            return;
+            throw new Error('Firebase не подключен');
         }
         
-        // Генерируем код комнаты
+        // Генерируем код
         const code = generateRoomCode();
         const roomId = code.replace('#', '');
-        
-        console.log('Создаю комнату:', roomId);
-        console.log('Код комнаты:', code);
-        
-        // Создаем игрока
         const playerId = `${nickname}-${Date.now()}`;
         
-        // Создаем комнату в Firebase
+        console.log('Код комнаты:', code);
+        console.log('ID игрока:', playerId);
+        
+        // Создаем комнату
         await roomsRef.child(roomId).set({
             code: code,
             created: getCurrentTimestamp(),
@@ -64,7 +62,7 @@ async function createRoom() {
             chat: {}
         });
         
-        console.log('✅ Комната создана успешно');
+        console.log('✅ Комната создана');
         
         // Сохраняем в localStorage
         localStorage.setItem('playerNickname', nickname);
@@ -73,12 +71,14 @@ async function createRoom() {
         localStorage.setItem('roomId', roomId);
         localStorage.setItem('isAdmin', 'true');
         
-        // Переходим в комнату
+        console.log('💾 localStorage сохранен');
+        
+        // Переходим
         window.location.href = 'room.html';
         
     } catch (error) {
-        console.error('❌ Ошибка создания комнаты:', error);
-        alert('Ошибка при создании комнаты: ' + error.message);
+        console.error('❌ Ошибка:', error);
+        alert('Ошибка: ' + error.message);
     }
 }
 
@@ -93,37 +93,29 @@ async function joinRoom() {
     }
     
     if (!roomCode || roomCode.length < 7) {
-        alert('Пожалуйста, введите корректный код комнаты (например #A7F3C1)');
+        alert('Введите код комнаты (например #A7F3C1)');
         return;
     }
     
     try {
-        // Проверяем Firebase
-        if (typeof roomsRef === 'undefined') {
-            console.error('Firebase не подключен');
-            alert('Ошибка подключения к базе данных');
-            return;
-        }
+        console.log('🚀 Подключение к комнате:', roomCode);
         
         const roomId = roomCode.replace('#', '');
         
-        console.log('Подключаюсь к комнате:', roomId);
-        
-        // Проверяем, существует ли комната
+        // Проверяем существование комнаты
         const snapshot = await roomsRef.child(roomId).once('value');
         const room = snapshot.val();
         
         if (!room) {
-            alert('❌ Комната с таким кодом не найдена!');
+            alert('❌ Комната не найдена!');
             return;
         }
         
-        console.log('✅ Комната найдена:', room);
+        console.log('✅ Комната найдена');
         
-        // Создаем игрока
         const playerId = `${nickname}-${Date.now()}`;
         
-        // Добавляем игрока в комнату
+        // Добавляем игрока
         await roomsRef.child(roomId).child('players').child(nickname).set({
             id: playerId,
             nickname: nickname,
@@ -136,39 +128,33 @@ async function joinRoom() {
             matchId: null
         });
         
-        console.log('✅ Игрок добавлен в комнату');
+        console.log('✅ Игрок добавлен');
         
-        // Сохраняем данные
+        // Сохраняем в localStorage
         localStorage.setItem('playerNickname', nickname);
         localStorage.setItem('playerId', playerId);
         localStorage.setItem('roomCode', roomCode);
         localStorage.setItem('roomId', roomId);
         localStorage.setItem('isAdmin', 'false');
         
-        // Переходим в комнату
+        console.log('💾 localStorage сохранен');
+        
         window.location.href = 'room.html';
         
     } catch (error) {
-        console.error('❌ Ошибка подключения:', error);
-        alert('Ошибка при подключении: ' + error.message);
+        console.error('❌ Ошибка:', error);
+        alert('Ошибка: ' + error.message);
     }
 }
 
-// Автоматически форматируем код при вводе
+// Автоформатирование кода
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('lobby.html загружен');
+    console.log('📱 lobby.js загружен');
     
     const codeInput = document.getElementById('room-code');
     if (codeInput) {
         codeInput.addEventListener('input', function() {
             formatCode(this);
         });
-    }
-    
-    // Проверяем Firebase
-    if (typeof firebase !== 'undefined') {
-        console.log('✅ Firebase доступен');
-    } else {
-        console.error('❌ Firebase не загружен');
     }
 });
