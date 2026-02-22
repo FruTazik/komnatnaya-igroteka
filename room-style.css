@@ -1,4 +1,4 @@
-/* Стили специально для комнаты */
+/* Стили для комнаты */
 .room-container {
     display: flex;
     width: 100%;
@@ -12,7 +12,7 @@
     position: relative;
 }
 
-/* Левая панель с игроками */
+/* Левая панель */
 .players-panel {
     width: 280px;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -28,7 +28,6 @@
     margin-bottom: 20px;
     text-align: center;
     font-size: 1.3em;
-    text-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
 .players-list {
@@ -50,18 +49,11 @@
     border-radius: 12px;
     backdrop-filter: blur(5px);
     border: 1px solid rgba(255, 255, 255, 0.3);
-    transition: all 0.3s;
-}
-
-.player-card:hover {
-    background: rgba(255, 255, 255, 0.3);
-    transform: translateX(5px);
 }
 
 .player-card.admin {
     background: linear-gradient(45deg, #f1c40f, #f39c12);
     border: 2px solid #fff;
-    font-weight: bold;
 }
 
 .player-card.empty {
@@ -73,7 +65,6 @@
 .player-name {
     font-weight: 500;
     color: white;
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .player-status {
@@ -87,20 +78,18 @@
     border-radius: 50%;
 }
 
-/* Счет игроков */
+/* Счет */
 .scores-panel {
     background: rgba(0, 0, 0, 0.2);
     border-radius: 15px;
     padding: 15px;
     margin: 10px 0;
-    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .scores-panel h4 {
     color: white;
     margin-bottom: 10px;
     text-align: center;
-    font-size: 1.1em;
 }
 
 .scores-list {
@@ -117,12 +106,6 @@
     padding: 8px 12px;
     background: rgba(255, 255, 255, 0.15);
     border-radius: 8px;
-    font-size: 0.9em;
-    backdrop-filter: blur(5px);
-}
-
-.score-item .player-name {
-    font-weight: 500;
 }
 
 .score-item .player-score {
@@ -139,13 +122,6 @@
     border-radius: 15px;
     text-align: center;
     margin: 10px 0;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-}
-
-.room-code-block p {
-    color: white;
-    margin-bottom: 5px;
-    opacity: 0.9;
 }
 
 .code-display {
@@ -188,7 +164,7 @@
     transform: scale(1.1);
 }
 
-/* Кнопка начала игры */
+/* Кнопка старта */
 .start-game-btn {
     width: 100%;
     padding: 15px;
@@ -201,7 +177,6 @@
     cursor: pointer;
     transition: all 0.3s;
     margin-top: 10px;
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
 }
 
@@ -216,11 +191,6 @@
     opacity: 0.5;
 }
 
-.start-game-btn:disabled:hover {
-    transform: none;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-}
-
 /* Основное окно */
 .main-content {
     flex: 1;
@@ -231,7 +201,7 @@
     overflow: hidden;
 }
 
-/* Верхняя панель с информацией */
+/* Верхняя панель */
 .game-header {
     display: flex;
     justify-content: space-between;
@@ -283,10 +253,9 @@
 #game-timer {
     font-family: monospace;
     font-size: 1.2em;
-    color: #333;
 }
 
-/* Элементы управления для наблюдателя */
+/* Наблюдатель */
 .spectator-controls {
     display: flex;
     align-items: center;
@@ -322,7 +291,6 @@
     font-size: 0.95em;
     min-width: 150px;
     text-align: center;
-    font-weight: 500;
 }
 
 /* Область игры */
@@ -334,19 +302,13 @@
     overflow-y: auto;
     margin-bottom: 20px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-    min-height: 400px;
 }
 
-/* Сетка игр 3x3 */
-.games-selection {
-    height: 100%;
-}
-
+/* Сетка игр */
 .games-selection h2 {
     text-align: center;
     color: #333;
     margin-bottom: 15px;
-    font-size: 2em;
 }
 
 .admin-only {
@@ -354,15 +316,13 @@
     color: #e74c3c;
     font-size: 0.95em;
     margin-bottom: 25px;
-    font-style: italic;
     background: #fdeaea;
-    padding: 8px;
+    padding: 8px 25px;
     border-radius: 50px;
     display: inline-block;
     margin-left: auto;
     margin-right: auto;
     width: auto;
-    padding: 8px 25px;
 }
 
 .games-grid {
@@ -410,25 +370,9 @@
     cursor: not-allowed;
 }
 
-.game-option.coming-soon:hover {
-    transform: none;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-}
-
 .game-icon {
     font-size: 3em;
     margin-bottom: 10px;
-}
-
-.game-option h3 {
-    color: #333;
-    margin-bottom: 5px;
-    font-size: 1.1em;
-}
-
-.game-option p {
-    color: #666;
-    font-size: 0.8em;
 }
 
 /* Чат */
@@ -452,14 +396,12 @@
     background: linear-gradient(45deg, #667eea, #764ba2);
     color: white;
     font-weight: bold;
-    font-size: 1.1em;
 }
 
 .chat-messages {
     flex: 1;
     padding: 15px;
     overflow-y: auto;
-    font-size: 0.95em;
     background: #f9f9f9;
     display: flex;
     flex-direction: column;
@@ -480,7 +422,6 @@
     font-weight: bold;
     color: #667eea;
     margin-right: 8px;
-    font-size: 0.9em;
 }
 
 .message .time {
@@ -493,7 +434,6 @@
 .message.system {
     align-self: center;
     background: #f0f0f0;
-    font-style: italic;
     color: #666;
     max-width: 90%;
     text-align: center;
@@ -513,7 +453,6 @@
     border: 2px solid #e0e0e0;
     border-radius: 25px;
     font-size: 0.95em;
-    transition: border 0.3s;
 }
 
 .chat-input input:focus {
@@ -528,7 +467,6 @@
     border: none;
     border-radius: 25px;
     cursor: pointer;
-    font-weight: bold;
     transition: all 0.3s;
 }
 
@@ -537,7 +475,7 @@
     box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
 }
 
-/* Плавающий код комнаты */
+/* Плавающий код */
 .floating-code {
     position: absolute;
     bottom: 20px;
@@ -554,7 +492,6 @@
     z-index: 100;
     backdrop-filter: blur(5px);
     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
-    border: 2px solid rgba(255, 255, 255, 0.2);
 }
 
 .copy-btn-small {
@@ -565,9 +502,6 @@
     cursor: pointer;
     padding: 5px 10px;
     border-radius: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     transition: all 0.3s;
 }
 
@@ -576,7 +510,7 @@
     transform: scale(1.1);
 }
 
-/* Подсказка для наблюдателя */
+/* Подсказка наблюдателя */
 .spectator-hint {
     position: fixed;
     bottom: 120px;
@@ -593,6 +527,7 @@
     border: 2px solid #667eea;
     pointer-events: none;
     white-space: nowrap;
+    display: none;
 }
 
 @keyframes bounce {
@@ -600,80 +535,17 @@
     50% { transform: translateX(-50%) translateY(-10px); }
 }
 
-/* Уведомления */
-.game-notification {
-    position: fixed;
-    top: 30px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: linear-gradient(45deg, #667eea, #764ba2);
-    color: white;
-    padding: 15px 40px;
-    border-radius: 50px;
-    font-size: 1.2em;
-    z-index: 2000;
-    animation: slideDown 0.3s ease;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    font-weight: bold;
-}
-
-@keyframes slideDown {
-    from {
-        opacity: 0;
-        transform: translate(-50%, -100%);
-    }
-    to {
-        opacity: 1;
-        transform: translate(-50%, 0);
-    }
-}
-
-/* Скролл */
-::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-}
-
-::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.05);
-    border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb {
-    background: linear-gradient(45deg, #667eea, #764ba2);
-    border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(45deg, #764ba2, #667eea);
-}
-
 /* Адаптивность */
 @media (max-width: 1024px) {
     .room-container {
         flex-direction: column;
         height: auto;
-        min-height: 90vh;
     }
     
     .players-panel {
         width: 100%;
         border-right: none;
         border-bottom: 2px solid rgba(255, 255, 255, 0.3);
-    }
-    
-    .players-list {
-        max-height: 150px;
-    }
-    
-    .game-header {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    
-    .game-info-panel {
-        justify-content: center;
     }
     
     .games-row {
@@ -696,12 +568,5 @@
     .spectator-controls {
         width: 100%;
         justify-content: center;
-    }
-    
-    .floating-code {
-        bottom: 10px;
-        right: 10px;
-        font-size: 1em;
-        padding: 8px 15px;
     }
 }
