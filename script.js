@@ -6,28 +6,23 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (prevBtn) {
         prevBtn.addEventListener('click', () => {
-            container.scrollBy({
-                left: -200,
-                behavior: 'smooth'
-            });
+            container.scrollBy({ left: -200, behavior: 'smooth' });
         });
     }
     
     if (nextBtn) {
         nextBtn.addEventListener('click', () => {
-            container.scrollBy({
-                left: 200,
-                behavior: 'smooth'
-            });
+            container.scrollBy({ left: 200, behavior: 'smooth' });
         });
     }
     
-    // Клик по карточке игры (пока просто подсветка)
-    const gameCards = document.querySelectorAll('.game-card');
-    gameCards.forEach(card => {
+    // Клик по карточке игры
+    document.querySelectorAll('.game-card').forEach(card => {
         card.addEventListener('click', function() {
-            gameCards.forEach(c => c.style.transform = 'scale(1)');
+            document.querySelectorAll('.game-card').forEach(c => c.style.transform = 'scale(1)');
             this.style.transform = 'scale(1.05)';
         });
     });
+    
+    console.log('index.js загружен');
 });
