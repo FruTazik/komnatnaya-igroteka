@@ -1,4 +1,4 @@
-// game-engine.js - Упрощенный движок (только индивидуальные игры)
+// game-engine.js - Движок с наблюдателями как в CS2
 
 class GameEngine {
     constructor() {
