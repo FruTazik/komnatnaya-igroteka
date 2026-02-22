@@ -3,84 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Вход в комнату - Игротека</title>
+    <title>Комната - Игротека</title>
     
-    <!-- Подключение стилей -->
+    <!-- Стили -->
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="room-style.css">
     
-    <!-- Firebase SDK (ВАЖНО: именно в этом порядке) -->
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     
-    <!-- Твой конфиг Firebase (после SDK) -->
+    <!-- Конфиг Firebase -->
     <script src="firebase-config.js"></script>
     
     <style>
-        /* Дополнительные стили для лобби */
-        .rooms-hint {
-            text-align: center;
-            margin-top: 20px;
-            padding: 10px;
-            background: rgba(102, 126, 234, 0.1);
-            border-radius: 10px;
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.95);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            font-size: 1.5em;
             color: #667eea;
-            font-size: 0.9em;
+            backdrop-filter: blur(5px);
         }
         
-        .rooms-hint span {
-            font-weight: bold;
-            background: #667eea;
-            color: white;
-            padding: 2px 8px;
-            border-radius: 12px;
-            margin-left: 5px;
+        .loading-screen::after {
+            content: '';
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .debug-panel {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.8);
+            color: #0f0;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 9999;
+            max-width: 400px;
+            max-height: 200px;
+            overflow: auto;
         }
     </style>
 </head>
 <body>
-    <div id="debug-info" class="debug-info" style="display: none;">Отладка</div>
+    <div id="loading-screen" class="loading-screen">
+        Загрузка комнаты
+    </div>
     
-    <!-- Индикатор загрузки -->
-    <div id="loading" class="loading">Загрузка комнаты</div>
     <div class="room-container">
         <!-- Левая панель с игроками -->
         <div class="players-panel">
             <h3>👥 Игроки в комнате</h3>
             <div class="players-list" id="players-list">
-                <!-- Сюда будут добавляться игроки через JS -->
+                <!-- Сюда будут добавляться игроки -->
             </div>
             
             <!-- Счет игроков -->
             <div class="scores-panel">
                 <h4>🏆 Счет</h4>
-                <div id="scores-list" class="scores-list">
-                    <!-- Сюда будут добавляться баллы -->
-                </div>
+                <div id="scores-list" class="scores-list"></div>
             </div>
             
             <!-- Код комнаты -->
             <div class="room-code-block">
                 <p>Код комнаты:</p>
                 <div class="code-display">
-                    <span id="room-code-display">#A7F3C1</span>
+                    <span id="room-code-display">#------</span>
                     <button class="copy-btn" onclick="copyRoomCode()" title="Копировать код">📋</button>
                 </div>
                 <p class="small">Нажмите на кнопку, чтобы скопировать</p>
             </div>
             
-            <!-- Кнопка начала игры (только для админа) -->
+            <!-- Кнопка начала игры -->
             <button id="start-game-btn" class="start-game-btn" onclick="startSelectedGame()">
                 🎮 Начать игру
             </button>
         </div>
         
-        <!-- Основное окно с игрой -->
+        <!-- Основное окно -->
         <div class="main-content">
-            <!-- Верхняя панель с информацией об игре -->
+            <!-- Верхняя панель -->
             <div class="game-header">
                 <div class="game-title" id="game-title">🎮 Выберите игру</div>
                 <div class="game-info-panel" id="game-info-panel">
-                    <div class="info-item" id="game-current-player">
+                    <div class="info-item">
                         <span class="info-label">Вы:</span>
                         <span class="info-value" id="player-name">—</span>
                     </div>
@@ -88,7 +115,7 @@
                         <span class="info-label">Против:</span>
                         <span class="info-value" id="opponent-name">—</span>
                     </div>
-                    <div class="info-item" id="game-timer-item">
+                    <div class="info-item">
                         <span class="info-label">⏰</span>
                         <span class="info-value" id="game-timer">20:00</span>
                     </div>
@@ -97,7 +124,7 @@
                         <span class="info-value" id="turn-indicator">—</span>
                     </div>
                 </div>
-                <div class="spectator-controls" id="spectator-controls" style="display: none;">
+                <div class="spectator-controls" id="spectator-controls">
                     <button class="spectator-btn" onclick="spectatorPrev()">←</button>
                     <span id="spectator-viewing">Наблюдение: —</span>
                     <button class="spectator-btn" onclick="spectatorNext()">→</button>
@@ -106,12 +133,11 @@
             
             <!-- Область игры -->
             <div id="game-area" class="game-area">
-                <!-- Список игр (показывается, когда игра не выбрана) -->
+                <!-- Список игр -->
                 <div id="games-selection" class="games-selection">
                     <h2>Выберите игру</h2>
                     <p class="admin-only" id="admin-message">👑 Только администратор может выбрать игру</p>
                     
-                    <!-- Игры сеткой 3x3 (3 ряда по 3 игры) -->
                     <div class="games-grid">
                         <!-- Ряд 1 -->
                         <div class="games-row">
@@ -172,15 +198,13 @@
                     </div>
                 </div>
                 
-                <!-- Сюда будет загружаться игра -->
-                <div id="game-canvas" class="game-canvas" style="display: none;">
-                    <!-- Здесь будет отображаться игра -->
-                </div>
+                <!-- Игровое поле -->
+                <div id="game-canvas" class="game-canvas" style="display: none;"></div>
             </div>
             
-            <!-- Нижняя панель с чатом -->
+            <!-- Чат -->
             <div class="chat-panels">
-                <div class="global-chat" style="width: 100%;">
+                <div class="global-chat">
                     <div class="chat-header">🌍 Общий чат</div>
                     <div class="chat-messages" id="global-chat-messages">
                         <div class="message system">
@@ -195,23 +219,37 @@
             </div>
         </div>
         
-        <!-- Плавающий код комнаты -->
+        <!-- Плавающий код -->
         <div class="floating-code">
-            <span id="floating-code">#A7F3C1</span>
+            <span id="floating-code">#------</span>
             <button class="copy-btn-small" onclick="copyRoomCode()">📋</button>
         </div>
     </div>
     
-    <!-- Подсказка для наблюдателя (показывается при нажатии) -->
-    <div id="spectator-hint" class="spectator-hint" style="display: none;">
+    <!-- Подсказка для наблюдателя -->
+    <div id="spectator-hint" class="spectator-hint">
         👆 Нажмите на игровое поле, чтобы переключаться между игроками
     </div>
     
-    <!-- Подключаем скрипты -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-    <script src="firebase-config.js"></script>
     <script src="game-engine.js"></script>
     <script src="room-script.js"></script>
+    
+    <script>
+        // Скрываем загрузку когда всё готово
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                document.getElementById('loading-screen').style.display = 'none';
+            }, 1000);
+        });
+        
+        console.log('🏁 room.html загружен');
+        console.log('localStorage:', {
+            playerNickname: localStorage.getItem('playerNickname'),
+            playerId: localStorage.getItem('playerId'),
+            roomCode: localStorage.getItem('roomCode'),
+            roomId: localStorage.getItem('roomId'),
+            isAdmin: localStorage.getItem('isAdmin')
+        });
+    </script>
 </body>
 </html>
