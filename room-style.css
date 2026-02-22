@@ -1,300 +1,723 @@
-/* Добавляем в конец файла */
+/* Стили для комнаты - ПОЛНОСТЬЮ АДАПТИВНЫЕ */
+.room-container {
+    display: flex;
+    width: 100%;
+    max-width: 1600px;
+    height: 95vh;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    position: relative;
+    margin: 0 auto;
+}
+
+/* Левая панель - фиксированной ширины */
+.players-panel {
+    width: 260px;
+    min-width: 260px;
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    color: white;
+    border-right: 2px solid rgba(255, 255, 255, 0.2);
+    overflow-y: auto;
+}
+
+.players-panel h3 {
+    color: white;
+    margin-bottom: 15px;
+    text-align: center;
+    font-size: 1.2em;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.players-list {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 15px;
+    overflow-y: auto;
+    max-height: 400px;
+}
+
+.player-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    backdrop-filter: blur(5px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s;
+}
+
+.player-card.self {
+    background: rgba(255, 215, 0, 0.25);
+    border: 2px solid gold;
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+}
+
+.player-card.empty {
+    opacity: 0.4;
+    background: rgba(0, 0, 0, 0.3);
+    border: 2px dashed rgba(255, 255, 255, 0.3);
+}
 
 .player-info {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
+    overflow: hidden;
 }
 
 .player-status {
+    font-size: 1.1em;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.player-name {
+    font-weight: 500;
+    color: white;
+    font-size: 0.95em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px;
+}
+
+.player-score {
+    background: rgba(255, 255, 255, 0.25);
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 0.8em;
+    font-weight: bold;
+    color: gold;
+    flex-shrink: 0;
+}
+
+/* Код комнаты */
+.room-code-block {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 12px;
+    border-radius: 10px;
+    text-align: center;
+    margin: 10px 0;
+}
+
+.code-display {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.4);
+    padding: 8px;
+    border-radius: 6px;
+    margin: 8px 0;
+}
+
+#room-code-display {
+    font-family: monospace;
     font-size: 1.2em;
-    width: 28px;
-    height: 28px;
+    font-weight: bold;
+    color: white;
+    letter-spacing: 1px;
+}
+
+.copy-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    font-size: 1em;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.3s;
+}
+
+.copy-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Кнопка старта */
+.start-game-btn {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(45deg, #00b09b, #96c93d);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-top: 10px;
+}
+
+.start-game-btn:disabled {
+    background: linear-gradient(45deg, #95a5a6, #7f8c8d);
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.start-game-btn.hidden {
+    display: none;
+}
+
+/* Основное окно */
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.9);
+    overflow: hidden;
+    min-width: 0; /* Важно для flex */
+}
+
+/* Верхняя панель */
+.game-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    background: white;
+    border-radius: 10px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.game-title {
+    font-size: 1.1em;
+    font-weight: bold;
+    background: linear-gradient(45deg, #1e3c72, #2a5298);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    white-space: nowrap;
+}
+
+.game-info-panel {
+    display: flex;
+    gap: 15px;
+    background: #f5f5f5;
+    padding: 6px 15px;
+    border-radius: 20px;
+    flex-wrap: wrap;
+}
+
+.info-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.9em;
+    white-space: nowrap;
+}
+
+.info-label {
+    color: #666;
+}
+
+.info-value {
+    color: #333;
+    font-weight: bold;
+}
+
+#game-timer {
+    font-family: monospace;
+    font-size: 1.1em;
+}
+
+/* Наблюдатель */
+.spectator-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #2c3e50;
+    padding: 4px 12px;
+    border-radius: 20px;
+    color: white;
+}
+
+.spectator-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1.1em;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-.player-card.self .player-status {
-    animation: glow 2s infinite;
+#spectator-viewing {
+    font-size: 0.85em;
+    min-width: 120px;
+    text-align: center;
+    white-space: nowrap;
 }
 
-@keyframes glow {
-    0% { text-shadow: 0 0 5px gold; }
-    50% { text-shadow: 0 0 20px gold; }
-    100% { text-shadow: 0 0 5px gold; }
+/* Область игры */
+.game-area {
+    flex: 1;
+    background: white;
+    border-radius: 10px;
+    padding: 15px;
+    overflow: auto;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 300px;
 }
 
-/* Стили для морского боя (добавляем недостающие) */
+/* ЧАТ - компактный, прижатый к левому краю */
+.chat-panels {
+    width: 100%;
+    max-width: 400px;
+    height: 150px;
+    margin-left: 0;
+    align-self: flex-start;
+}
+
+.global-chat {
+    width: 100%;
+    height: 100%;
+    background: white;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e0e0e0;
+}
+
+.chat-header {
+    padding: 6px 12px;
+    background: linear-gradient(45deg, #1e3c72, #2a5298);
+    color: white;
+    font-weight: bold;
+    font-size: 0.85em;
+}
+
+.chat-messages {
+    flex: 1;
+    padding: 8px;
+    overflow-y: auto;
+    background: #f9f9f9;
+    font-size: 0.8em;
+}
+
+.message {
+    padding: 4px 8px;
+    background: white;
+    border-radius: 6px;
+    margin-bottom: 4px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.message .sender {
+    font-weight: bold;
+    color: #2a5298;
+    margin-right: 4px;
+    font-size: 0.85em;
+}
+
+.message .time {
+    font-size: 0.6em;
+    color: #999;
+    float: right;
+}
+
+.chat-input {
+    display: flex;
+    padding: 6px;
+    background: white;
+    border-top: 1px solid #e0e0e0;
+    gap: 4px;
+}
+
+.chat-input input {
+    flex: 1;
+    padding: 4px 8px;
+    border: 1px solid #ddd;
+    border-radius: 15px;
+    font-size: 0.8em;
+}
+
+.chat-input button {
+    padding: 4px 12px;
+    background: linear-gradient(45deg, #1e3c72, #2a5298);
+    color: white;
+    border: none;
+    border-radius: 15px;
+    cursor: pointer;
+    font-size: 0.8em;
+    white-space: nowrap;
+}
+
+/* Морской бой - компактные размеры */
 .sea-battle-container {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 15px;
     width: 100%;
-    height: 100%;
-    padding: 10px;
+    max-width: 800px;
+    margin: 0 auto;
 }
 
 .placement-area {
     background: linear-gradient(135deg, #667eea20, #764ba220);
-    padding: 15px;
-    border-radius: 10px;
+    padding: 10px;
+    border-radius: 8px;
     text-align: center;
-    border: 2px solid #667eea;
-    transition: all 0.5s ease;
+    border: 1px solid #667eea;
 }
 
 .placement-area h3 {
     color: #333;
-    margin-bottom: 15px;
+    margin-bottom: 10px;
+    font-size: 1em;
 }
 
 #placement-timer {
     color: #e74c3c;
     font-weight: bold;
-    font-size: 1.2em;
+    font-size: 1.1em;
 }
 
 .ships-panel {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 15px;
+    gap: 10px;
 }
 
 .ships-list {
     display: flex;
-    gap: 10px;
+    gap: 8px;
     flex-wrap: wrap;
     justify-content: center;
-    min-height: 80px;
-    padding: 10px;
+    min-height: 50px;
+    padding: 8px;
     background: white;
-    border-radius: 8px;
-    box-shadow: inset 0 2px 5px rgba(0,0,0,0.1);
+    border-radius: 6px;
 }
 
 .ship-item {
-    padding: 8px 15px;
+    padding: 4px 10px;
     background: linear-gradient(135deg, #2c3e50, #34495e);
     color: white;
-    border-radius: 5px;
+    border-radius: 4px;
     cursor: move;
-    font-size: 1.2em;
+    font-size: 1em;
     user-select: none;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    transition: transform 0.2s;
-}
-
-.ship-item:hover {
-    transform: scale(1.05);
-}
-
-.ship-item:active {
-    opacity: 0.7;
+    white-space: nowrap;
 }
 
 .rotate-btn {
-    padding: 10px 25px;
+    padding: 6px 15px;
     background: linear-gradient(45deg, #667eea, #764ba2);
     color: white;
     border: none;
-    border-radius: 25px;
+    border-radius: 20px;
     cursor: pointer;
-    font-size: 1em;
-    font-weight: bold;
-    transition: all 0.3s;
-    box-shadow: 0 2px 10px rgba(102,126,234,0.4);
-}
-
-.rotate-btn:hover {
-    transform: scale(1.05);
-    box-shadow: 0 5px 15px rgba(102,126,234,0.6);
+    font-size: 0.9em;
 }
 
 .battlefields {
     display: flex;
-    gap: 30px;
+    gap: 20px;
     justify-content: center;
-    transition: all 0.5s ease;
     flex-wrap: wrap;
 }
 
 .field-container {
     text-align: center;
     background: white;
-    padding: 15px;
-    border-radius: 10px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    padding: 10px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
 .field-container h4 {
-    margin-bottom: 15px;
+    margin-bottom: 10px;
     color: #2c3e50;
-    font-size: 1.1em;
+    font-size: 0.95em;
+    white-space: nowrap;
 }
 
 .battlefield {
     display: grid;
-    grid-template-columns: repeat(10, 40px);
+    grid-template-columns: repeat(10, minmax(25px, 35px));
     gap: 2px;
     background: #1e3c72;
-    padding: 10px;
-    border-radius: 8px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    padding: 8px;
+    border-radius: 6px;
 }
 
 .battle-cell {
-    width: 40px;
-    height: 40px;
+    aspect-ratio: 1;
     background: #3498db;
     border: 1px solid #2980b9;
     cursor: pointer;
     transition: all 0.2s;
-    border-radius: 3px;
-}
-
-.battle-cell:hover {
-    background: #5dade2;
-    transform: scale(1.05);
-}
-
-.battle-cell.ship-placed {
-    background: #27ae60;
-    border-color: #229954;
-}
-
-.battle-cell.hit {
-    background: #e74c3c;
-    cursor: not-allowed;
-    position: relative;
-    animation: hitEffect 0.3s;
-}
-
-.battle-cell.hit::after {
-    content: '✕';
-    color: white;
-    font-size: 1.5em;
+    border-radius: 2px;
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 100%;
-    font-weight: bold;
-}
-
-.battle-cell.hit.killed {
-    background: #f39c12;
-    border-color: #e67e22;
-}
-
-.battle-cell.miss {
-    background: #95a5a6;
-    cursor: not-allowed;
-    position: relative;
-}
-
-.battle-cell.miss::after {
-    content: '•';
     color: white;
-    font-size: 2em;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
+    font-size: 0.8em;
 }
 
-@keyframes hitEffect {
+/* Затемнение и отсчет */
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+}
+
+.countdown {
+    font-size: 8em;
+    color: white;
+    text-shadow: 0 0 30px gold;
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
     0% { transform: scale(1); }
     50% { transform: scale(1.2); }
     100% { transform: scale(1); }
 }
 
-.game-result {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: white;
-    padding: 40px 60px;
-    border-radius: 20px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-    text-align: center;
-    z-index: 11000;
-    animation: slideIn 0.3s ease;
-    border: 3px solid #667eea;
-}
-
-.game-result h2 {
-    font-size: 2.5em;
-    margin-bottom: 20px;
-    background: linear-gradient(45deg, #667eea, #764ba2);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
-
-.game-result p {
-    margin: 15px 0;
-    font-size: 1.3em;
-    color: #333;
-}
-
-.game-result button {
-    margin-top: 25px;
-    padding: 12px 40px;
-    background: linear-gradient(45deg, #667eea, #764ba2);
+/* Плавающий код */
+.floating-code {
+    position: absolute;
+    bottom: 15px;
+    right: 15px;
+    background: rgba(0, 0, 0, 0.7);
     color: white;
-    border: none;
+    padding: 6px 12px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: monospace;
+    font-size: 0.9em;
+    z-index: 100;
+    backdrop-filter: blur(5px);
+}
+
+/* Подсказка наблюдателя */
+.spectator-hint {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 10px 20px;
     border-radius: 30px;
-    cursor: pointer;
-    font-size: 1.2em;
-    font-weight: bold;
-    transition: all 0.3s;
+    font-size: 0.9em;
+    z-index: 2000;
+    animation: bounce 2s infinite;
+    border: 2px solid gold;
+    white-space: nowrap;
 }
 
-.game-result button:hover {
-    transform: scale(1.05);
-    box-shadow: 0 5px 20px rgba(102,126,234,0.6);
-}
-
-@keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: translate(-50%, -60%);
+/* АДАПТИВНОСТЬ */
+@media (max-width: 1200px) {
+    .players-panel {
+        width: 220px;
+        min-width: 220px;
     }
-    to {
-        opacity: 1;
-        transform: translate(-50%, -50%);
-    }
-}
-
-/* Адаптивность */
-@media (max-width: 1024px) {
+    
     .battlefield {
-        grid-template-columns: repeat(10, 30px);
+        grid-template-columns: repeat(10, 28px);
+    }
+}
+
+@media (max-width: 992px) {
+    .players-panel {
+        width: 200px;
+        min-width: 200px;
     }
     
-    .battle-cell {
-        width: 30px;
-        height: 30px;
+    .game-header {
+        flex-direction: column;
+        align-items: flex-start;
     }
     
-    .battle-cell.hit::after {
-        font-size: 1.2em;
+    .game-info-panel {
+        width: 100%;
+        justify-content: space-around;
+    }
+    
+    .battlefield {
+        grid-template-columns: repeat(10, 25px);
     }
 }
 
 @media (max-width: 768px) {
-    .battlefields {
+    .room-container {
         flex-direction: column;
-        align-items: center;
+        height: auto;
+        min-height: 100vh;
+        border-radius: 0;
     }
     
-    .game-result {
-        padding: 20px 30px;
-        width: 90%;
+    .players-panel {
+        width: 100%;
+        min-width: 100%;
+        border-right: none;
+        border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+        max-height: 300px;
     }
     
-    .game-result h2 {
-        font-size: 2em;
+    .players-list {
+        max-height: 150px;
+    }
+    
+    .main-content {
+        padding: 10px;
+    }
+    
+    .game-header {
+        padding: 8px;
+    }
+    
+    .game-info-panel {
+        gap: 8px;
+        padding: 4px 10px;
+        font-size: 0.8em;
+    }
+    
+    .spectator-controls {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    #spectator-viewing {
+        min-width: 100px;
+    }
+    
+    .chat-panels {
+        max-width: 100%;
+        height: 120px;
+    }
+    
+    .battlefields {
+        gap: 10px;
+    }
+    
+    .field-container {
+        padding: 5px;
+    }
+    
+    .field-container h4 {
+        font-size: 0.8em;
+    }
+    
+    .battlefield {
+        grid-template-columns: repeat(10, 22px);
+        padding: 4px;
+    }
+    
+    .ships-list {
+        min-height: 40px;
+    }
+    
+    .ship-item {
+        padding: 3px 6px;
+        font-size: 0.8em;
+    }
+    
+    .countdown {
+        font-size: 5em;
+    }
+    
+    .floating-code {
+        bottom: 10px;
+        right: 10px;
+        font-size: 0.8em;
+        padding: 4px 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .players-panel {
+        padding: 10px;
+    }
+    
+    .player-name {
+        max-width: 80px;
+        font-size: 0.85em;
+    }
+    
+    .game-info-panel {
+        flex-wrap: wrap;
+        border-radius: 10px;
+    }
+    
+    .info-item {
+        font-size: 0.75em;
+    }
+    
+    .battlefield {
+        grid-template-columns: repeat(10, 18px);
+    }
+    
+    .battle-cell {
+        font-size: 0.6em;
+    }
+    
+    .chat-input input {
+        width: 100%;
+    }
+    
+    .chat-input button {
+        padding: 4px 8px;
+    }
+    
+    .spectator-hint {
+        font-size: 0.7em;
+        padding: 6px 12px;
+        bottom: 60px;
+    }
+}
+
+/* Для очень маленьких экранов */
+@media (max-width: 360px) {
+    .battlefield {
+        grid-template-columns: repeat(10, 15px);
+    }
+    
+    .field-container h4 {
+        font-size: 0.7em;
+    }
+    
+    .player-name {
+        max-width: 60px;
     }
 }
