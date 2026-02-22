@@ -1,12 +1,47 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход в комнату - Игротека</title>
+    
+    <!-- Подключение стилей -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Firebase SDK (ВАЖНО: именно в этом порядке) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    
+    <!-- Твой конфиг Firebase (после SDK) -->
     <script src="firebase-config.js"></script>
-    <script src="lobby-script.js"></script>
+    
+    <style>
+        /* Дополнительные стили для лобби */
+        .rooms-hint {
+            text-align: center;
+            margin-top: 20px;
+            padding: 10px;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 10px;
+            color: #667eea;
+            font-size: 0.9em;
+        }
+        
+        .rooms-hint span {
+            font-weight: bold;
+            background: #667eea;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            margin-left: 5px;
+        }
+    </style>
 </head>
 <body>
+    <div id="debug-info" class="debug-info" style="display: none;">Отладка</div>
+    
+    <!-- Индикатор загрузки -->
+    <div id="loading" class="loading">Загрузка комнаты</div>
     <div class="room-container">
         <!-- Левая панель с игроками -->
         <div class="players-panel">
