@@ -1,16 +1,11 @@
-// Хранилище активных комнат (в реальном проекте это будет Firebase)
-const activeRooms = JSON.parse(localStorage.getItem('activeRooms')) || {};
-
 // Функция для форматирования кода комнаты
 function formatCode(input) {
     let value = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
     
-    // Если первый символ не #, добавляем его
     if (value.length > 0 && !value.startsWith('#')) {
         value = '#' + value;
     }
     
-    // Ограничиваем длину (1 символ # + 6 символов кода)
     if (value.length > 7) {
         value = value.slice(0, 7);
     }
@@ -19,7 +14,7 @@ function formatCode(input) {
 }
 
 // Функция создания комнаты
-function createRoom() {
+async function createRoom() {
     const nickname = document.getElementById('nickname-create').value.trim();
     
     if (!nickname) {
@@ -27,32 +22,68 @@ function createRoom() {
         return;
     }
     
-    // Генерируем случайный код комнаты
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ123456789';
-    let code = '#';
-    for (let i = 0; i < 6; i++) {
-        code += chars[Math.floor(Math.random() * chars.length)];
+    try {
+        // Проверяем подключение к Firebase
+        if (typeof roomsRef === 'undefined') {
+            console.error('Firebase не подключен');
+            alert('Ошибка подключения к базе данных');
+            return;
+        }
+        
+        // Генерируем код комнаты
+        const code = generateRoomCode();
+        const roomId = code.replace('#', '');
+        
+        console.log('Создаю комнату:', roomId);
+        console.log('Код комнаты:', code);
+        
+        // Создаем игрока
+        const playerId = `${nickname}-${Date.now()}`;
+        
+        // Создаем комнату в Firebase
+        await roomsRef.child(roomId).set({
+            code: code,
+            created: getCurrentTimestamp(),
+            players: {
+                [nickname]: {
+                    id: playerId,
+                    nickname: nickname,
+                    isAdmin: true,
+                    connected: true,
+                    lastSeen: getCurrentTimestamp(),
+                    score: 0,
+                    isSpectator: false,
+                    opponent: null,
+                    matchId: null
+                }
+            },
+            admin: nickname,
+            gameStarted: false,
+            selectedGame: null,
+            matches: {},
+            chat: {}
+        });
+        
+        console.log('✅ Комната создана успешно');
+        
+        // Сохраняем в localStorage
+        localStorage.setItem('playerNickname', nickname);
+        localStorage.setItem('playerId', playerId);
+        localStorage.setItem('roomCode', code);
+        localStorage.setItem('roomId', roomId);
+        localStorage.setItem('isAdmin', 'true');
+        
+        // Переходим в комнату
+        window.location.href = 'room.html';
+        
+    } catch (error) {
+        console.error('❌ Ошибка создания комнаты:', error);
+        alert('Ошибка при создании комнаты: ' + error.message);
     }
-    
-    // Сохраняем комнату в активные
-    activeRooms[code] = {
-        created: Date.now(),
-        players: [nickname],
-        admin: nickname
-    };
-    localStorage.setItem('activeRooms', JSON.stringify(activeRooms));
-    
-    // Сохраняем ник и код
-    localStorage.setItem('playerNickname', nickname);
-    localStorage.setItem('isHost', 'true');
-    localStorage.setItem('roomCode', code);
-    
-    // Переходим в комнату
-    window.location.href = 'room.html';
 }
 
 // Функция подключения к комнате
-function joinRoom() {
+async function joinRoom() {
     const nickname = document.getElementById('nickname-join').value.trim();
     const roomCode = document.getElementById('room-code').value.trim();
     
@@ -66,48 +97,78 @@ function joinRoom() {
         return;
     }
     
-    // Проверяем, существует ли комната
-    if (!activeRooms[roomCode]) {
-        alert('❌ Комната с таким кодом не найдена!\n\nПроверьте код или создайте новую комнату.');
-        return;
+    try {
+        // Проверяем Firebase
+        if (typeof roomsRef === 'undefined') {
+            console.error('Firebase не подключен');
+            alert('Ошибка подключения к базе данных');
+            return;
+        }
+        
+        const roomId = roomCode.replace('#', '');
+        
+        console.log('Подключаюсь к комнате:', roomId);
+        
+        // Проверяем, существует ли комната
+        const snapshot = await roomsRef.child(roomId).once('value');
+        const room = snapshot.val();
+        
+        if (!room) {
+            alert('❌ Комната с таким кодом не найдена!');
+            return;
+        }
+        
+        console.log('✅ Комната найдена:', room);
+        
+        // Создаем игрока
+        const playerId = `${nickname}-${Date.now()}`;
+        
+        // Добавляем игрока в комнату
+        await roomsRef.child(roomId).child('players').child(nickname).set({
+            id: playerId,
+            nickname: nickname,
+            isAdmin: false,
+            connected: true,
+            lastSeen: getCurrentTimestamp(),
+            score: 0,
+            isSpectator: false,
+            opponent: null,
+            matchId: null
+        });
+        
+        console.log('✅ Игрок добавлен в комнату');
+        
+        // Сохраняем данные
+        localStorage.setItem('playerNickname', nickname);
+        localStorage.setItem('playerId', playerId);
+        localStorage.setItem('roomCode', roomCode);
+        localStorage.setItem('roomId', roomId);
+        localStorage.setItem('isAdmin', 'false');
+        
+        // Переходим в комнату
+        window.location.href = 'room.html';
+        
+    } catch (error) {
+        console.error('❌ Ошибка подключения:', error);
+        alert('Ошибка при подключении: ' + error.message);
     }
-    
-    // Сохраняем данные
-    localStorage.setItem('playerNickname', nickname);
-    localStorage.setItem('isHost', 'false');
-    localStorage.setItem('roomCode', roomCode);
-    
-    // Добавляем игрока в список комнаты
-    activeRooms[roomCode].players.push(nickname);
-    localStorage.setItem('activeRooms', JSON.stringify(activeRooms));
-    
-    // Переходим в комнату
-    window.location.href = 'room.html';
 }
 
-// Автоматически фокусируемся на поле ввода кода и форматируем
+// Автоматически форматируем код при вводе
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('lobby.html загружен');
+    
     const codeInput = document.getElementById('room-code');
     if (codeInput) {
         codeInput.addEventListener('input', function() {
             formatCode(this);
         });
     }
+    
+    // Проверяем Firebase
+    if (typeof firebase !== 'undefined') {
+        console.log('✅ Firebase доступен');
+    } else {
+        console.error('❌ Firebase не загружен');
+    }
 });
-
-// Функция для очистки старых комнат (комнаты старше 1 часа)
-function cleanOldRooms() {
-    const now = Date.now();
-    const oneHour = 60 * 60 * 1000;
-    
-    Object.keys(activeRooms).forEach(code => {
-        if (now - activeRooms[code].created > oneHour) {
-            delete activeRooms[code];
-        }
-    });
-    
-    localStorage.setItem('activeRooms', JSON.stringify(activeRooms));
-}
-
-// Запускаем очистку при загрузке
-cleanOldRooms();
