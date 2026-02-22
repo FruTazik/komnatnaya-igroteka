@@ -10,6 +10,7 @@ let currentAdmin = null;
 let selectedGame = null;
 let gameStarted = false;
 let spectatorHintTimeout = null;
+let countdownInterval = null;
 
 // Загрузка комнаты
 document.addEventListener('DOMContentLoaded', async function() {
@@ -24,7 +25,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     console.log('📦 Данные:', { nickname, playerId, roomCode, roomId, isAdmin });
     
-    // Проверка данных
     if (!nickname || !roomCode || !roomId) {
         console.error('❌ Нет данных в localStorage');
         alert('Ошибка: данные не найдены. Вернитесь в лобби.');
@@ -32,7 +32,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         return;
     }
     
-    // Проверка Firebase
     if (typeof roomsRef === 'undefined') {
         console.error('❌ Firebase не подключен');
         alert('Ошибка подключения к базе данных');
@@ -40,17 +39,12 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
     
     try {
-        // Получаем ссылки
         roomRef = roomsRef.child(roomId);
         playersRef = roomRef.child('players');
         matchesRef = roomRef.child('matches');
         chatRef = roomRef.child('chat');
         
-        console.log('🔗 Ссылки получены');
-        
-        // Проверяем комнату
         const snapshot = await roomRef.once('value');
-        
         if (!snapshot.exists()) {
             alert('❌ Комната не существует!');
             window.location.href = 'lobby.html';
@@ -58,9 +52,8 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
         
         const roomData = snapshot.val();
-        console.log('🏠 Данные комнаты:', roomData);
+        currentAdmin = roomData.admin;
         
-        // Создаем игрока
         currentPlayer = {
             id: playerId || `${nickname}-${Date.now()}`,
             nickname: nickname,
@@ -72,7 +65,6 @@ document.addEventListener('DOMContentLoaded', async function() {
             viewingPlayer: null
         };
         
-        // Добавляем в Firebase
         await playersRef.child(nickname).set({
             id: currentPlayer.id,
             nickname: nickname,
@@ -86,24 +78,18 @@ document.addEventListener('DOMContentLoaded', async function() {
             viewingPlayer: null
         });
         
-        console.log('✅ Игрок добавлен в Firebase');
-        
-        // Отображаем код
         document.querySelectorAll('#room-code-display, #floating-code').forEach(el => {
             if (el) el.textContent = roomCode;
         });
         
         document.getElementById('player-name').textContent = nickname;
         
-        // Скрываем элементы наблюдателя
         document.getElementById('spectator-controls').style.display = 'none';
         document.getElementById('spectator-hint').style.display = 'none';
         
-        // Настраиваем слушатели
         setupFirebaseListeners();
         setupExitHandlers();
         
-        // Обновляем интерфейс
         updateStartButton();
         updateWaitingMessage();
         
@@ -121,7 +107,10 @@ function setupFirebaseListeners() {
         const playersData = snapshot.val();
         if (!playersData) return;
         
-        currentPlayers = Object.values(playersData);
+        currentPlayers = Object.values(playersData).map(p => ({
+            ...p,
+            id: p.id || p.nickname
+        }));
         
         const admin = currentPlayers.find(p => p.isAdmin);
         if (admin) currentAdmin = admin.nickname;
@@ -141,15 +130,19 @@ function setupFirebaseListeners() {
         if (gameStarted) {
             document.getElementById('games-selection').style.display = 'none';
             document.getElementById('game-canvas').style.display = 'block';
-            document.getElementById('game-title').textContent = `🎮 ${getGameName(selectedGame)}`;
+            document.getElementById('start-game-btn').classList.add('hidden');
             
             if (currentPlayer.isSpectator) {
                 document.getElementById('spectator-controls').style.display = 'flex';
                 setTimeout(showSpectatorHint, 2000);
             }
+            
+            // Запускаем обратный отсчет
+            startCountdown();
         } else {
             document.getElementById('games-selection').style.display = 'block';
             document.getElementById('game-canvas').style.display = 'none';
+            document.getElementById('start-game-btn').classList.remove('hidden');
         }
     });
     
@@ -162,6 +155,7 @@ function setupFirebaseListeners() {
             });
             const el = document.querySelector(`[data-game="${selectedGame}"]`);
             if (el) el.classList.add('selected');
+            document.getElementById('game-title').textContent = `🎮 ${getGameName(selectedGame)}`;
         }
     });
     
@@ -173,6 +167,36 @@ function setupFirebaseListeners() {
     });
 }
 
+// Обратный отсчет
+function startCountdown() {
+    const overlay = document.createElement('div');
+    overlay.className = 'overlay';
+    overlay.id = 'countdown-overlay';
+    
+    const countdownDiv = document.createElement('div');
+    countdownDiv.className = 'countdown';
+    countdownDiv.id = 'countdown-number';
+    countdownDiv.textContent = '3';
+    
+    overlay.appendChild(countdownDiv);
+    document.body.appendChild(overlay);
+    
+    let count = 3;
+    countdownInterval = setInterval(() => {
+        count--;
+        if (count > 0) {
+            countdownDiv.textContent = count;
+        } else if (count === 0) {
+            countdownDiv.textContent = 'GO!';
+        } else {
+            clearInterval(countdownInterval);
+            setTimeout(() => {
+                overlay.remove();
+            }, 500);
+        }
+    }, 1000);
+}
+
 // Обновление списка игроков
 function updatePlayersList() {
     const list = document.getElementById('players-list');
@@ -182,47 +206,35 @@ function updatePlayersList() {
     
     currentPlayers.forEach(player => {
         const card = document.createElement('div');
-        card.className = `player-card ${player.isAdmin ? 'admin' : ''}`;
+        card.className = `player-card ${player.nickname === currentPlayer.nickname ? 'self' : ''}`;
         
-        let icon = '✅';
-        if (player.isAdmin) icon = '👑';
-        if (player.isSpectator) icon = '👁️';
+        let statusIcon = '✅';
+        if (player.isAdmin) statusIcon = '👑';
+        if (player.isSpectator) statusIcon = '👁️';
         
         card.innerHTML = `
-            <span class="player-name">${player.nickname}</span>
-            <span class="player-status">${icon}</span>
+            <div class="player-info">
+                <span class="player-status">${statusIcon}</span>
+                <span class="player-name">${player.nickname}</span>
+            </div>
+            <span class="player-score">${player.score || 0}</span>
         `;
+        
         list.appendChild(card);
     });
     
     for (let i = currentPlayers.length; i < 8; i++) {
         const empty = document.createElement('div');
         empty.className = 'player-card empty';
-        empty.innerHTML = '<span class="player-name">Свободно</span><span class="player-status">⬜</span>';
+        empty.innerHTML = `
+            <div class="player-info">
+                <span class="player-status">⬜</span>
+                <span class="player-name">Свободно</span>
+            </div>
+            <span class="player-score">0</span>
+        `;
         list.appendChild(empty);
     }
-    
-    updateScoresList();
-}
-
-// Обновление счета
-function updateScoresList() {
-    const scores = document.getElementById('scores-list');
-    if (!scores) return;
-    
-    scores.innerHTML = '';
-    
-    const sorted = [...currentPlayers].sort((a, b) => (b.score || 0) - (a.score || 0));
-    
-    sorted.forEach(player => {
-        const item = document.createElement('div');
-        item.className = 'score-item';
-        item.innerHTML = `
-            <span class="player-name">${player.nickname}${player.isSpectator ? ' 👁️' : ''}</span>
-            <span class="player-score">${player.score || 0}</span>
-        `;
-        scores.appendChild(item);
-    });
 }
 
 // Обновление кнопки старта
@@ -230,7 +242,7 @@ function updateStartButton() {
     const btn = document.getElementById('start-game-btn');
     if (!btn) return;
     
-    if (currentPlayer.isAdmin) {
+    if (currentPlayer.isAdmin && !gameStarted) {
         btn.style.display = 'block';
         btn.disabled = currentPlayers.length < 2;
         btn.style.opacity = currentPlayers.length < 2 ? '0.5' : '1';
