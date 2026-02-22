@@ -3,88 +3,134 @@ let currentPlayer = null;
 let roomId = null;
 let roomRef = null;
 let playersRef = null;
+let matchesRef = null;
+let chatRef = null;
 let currentPlayers = [];
 let currentAdmin = null;
 let selectedGame = null;
 let gameStarted = false;
-let gameEngine = null;
 let spectatorHintTimeout = null;
 
 // Загружаем данные при открытии комнаты
 document.addEventListener('DOMContentLoaded', async function() {
+    console.log('📱 room.html загружен');
+    
+    // Получаем данные из localStorage
     const nickname = localStorage.getItem('playerNickname');
+    const playerId = localStorage.getItem('playerId');
     const roomCode = localStorage.getItem('roomCode');
     roomId = localStorage.getItem('roomId');
+    const isAdmin = localStorage.getItem('isAdmin') === 'true';
     
+    console.log('📦 Данные из localStorage:', { nickname, playerId, roomCode, roomId, isAdmin });
+    
+    // Проверяем наличие данных
     if (!nickname || !roomCode || !roomId) {
-        alert('Ошибка: данные не найдены');
+        console.error('❌ Нет данных в localStorage');
+        alert('Ошибка: данные не найдены. Вернитесь в лобби.');
         window.location.href = 'lobby.html';
         return;
     }
     
-    // Создаем текущего игрока
-    currentPlayer = {
-        id: `${nickname}-${Date.now()}`,
-        nickname: nickname,
-        isAdmin: false,
-        score: 0,
-        isSpectator: false
-    };
-    
-    // Получаем ссылки на Firebase
-    if (typeof roomsRef !== 'undefined') {
-        roomRef = roomsRef.child(roomId);
-        playersRef = roomRef.child('players');
-    } else {
-        console.error('Firebase не подключен');
+    // Проверяем Firebase
+    if (typeof roomsRef === 'undefined') {
+        console.error('❌ Firebase не подключен');
         alert('Ошибка подключения к базе данных');
         return;
     }
     
-    // Проверяем, существует ли комната
-    const snapshot = await roomRef.once('value');
-    if (!snapshot.exists()) {
-        alert('❌ Комната больше не существует!');
-        window.location.href = 'lobby.html';
-        return;
+    try {
+        // Получаем ссылки на Firebase
+        roomRef = roomsRef.child(roomId);
+        playersRef = roomRef.child('players');
+        matchesRef = roomRef.child('matches');
+        chatRef = roomRef.child('chat');
+        
+        console.log('🔗 Ссылки Firebase получены');
+        
+        // Проверяем, существует ли комната
+        const snapshot = await roomRef.once('value');
+        
+        if (!snapshot.exists()) {
+            console.error('❌ Комната не существует');
+            alert('❌ Комната не существует!');
+            window.location.href = 'lobby.html';
+            return;
+        }
+        
+        const roomData = snapshot.val();
+        console.log('🏠 Данные комнаты:', roomData);
+        
+        // Создаем текущего игрока
+        currentPlayer = {
+            id: playerId || `${nickname}-${Date.now()}`,
+            nickname: nickname,
+            isAdmin: isAdmin,
+            score: 0,
+            isSpectator: false,
+            opponent: null,
+            matchId: null,
+            viewingPlayer: null
+        };
+        
+        // Добавляем или обновляем игрока в Firebase
+        await playersRef.child(nickname).set({
+            id: currentPlayer.id,
+            nickname: nickname,
+            isAdmin: isAdmin,
+            connected: true,
+            lastSeen: getCurrentTimestamp(),
+            score: 0,
+            isSpectator: false,
+            opponent: null,
+            matchId: null,
+            viewingPlayer: null
+        });
+        
+        console.log('✅ Игрок добавлен в Firebase:', currentPlayer);
+        
+        // Отображаем код комнаты
+        const codeElements = document.querySelectorAll('#room-code-display, #floating-code');
+        codeElements.forEach(el => {
+            if (el) el.textContent = roomCode;
+        });
+        
+        // Обновляем имя игрока на панели
+        const playerNameSpan = document.getElementById('player-name');
+        if (playerNameSpan) {
+            playerNameSpan.textContent = nickname;
+        }
+        
+        // Скрываем элементы для наблюдателя
+        document.getElementById('spectator-controls').style.display = 'none';
+        document.getElementById('spectator-hint').style.display = 'none';
+        
+        // Настраиваем слушатели
+        setupFirebaseListeners();
+        setupExitHandlers();
+        
+        // Обновляем кнопку старта
+        updateStartButton();
+        updateWaitingMessage();
+        
+        console.log('✅ Комната готова к работе');
+        
+    } catch (error) {
+        console.error('❌ Ошибка при загрузке комнаты:', error);
+        alert('Ошибка: ' + error.message);
     }
-    
-    const roomData = snapshot.val();
-    currentAdmin = roomData.admin;
-    currentPlayer.isAdmin = (roomData.admin === nickname);
-    
-    // Добавляем игрока в комнату
-    await playersRef.child(nickname).set({
-        id: currentPlayer.id,
-        nickname: nickname,
-        isAdmin: currentPlayer.isAdmin,
-        connected: true,
-        lastSeen: getCurrentTimestamp(),
-        score: 0
-    });
-    
-    // Отображаем код комнаты
-    const codeElements = document.querySelectorAll('#room-code-display, #floating-code');
-    codeElements.forEach(el => {
-        if (el) el.textContent = roomCode;
-    });
-    
-    // Слушаем изменения в комнате
-    setupFirebaseListeners();
-    
-    // Настраиваем обработчики выхода
-    setupExitHandlers();
-    
-    // Обновляем информацию на панели
-    document.getElementById('player-name').textContent = nickname;
 });
 
 // Настройка слушателей Firebase
 function setupFirebaseListeners() {
+    console.log('👂 Настройка слушателей Firebase');
+    
     // Слушаем изменения игроков
     playersRef.on('value', (snapshot) => {
         const playersData = snapshot.val();
         if (!playersData) return;
+        
+        console.log('👥 Обновление игроков:', playersData);
         
         // Преобразуем в массив
         currentPlayers = Object.values(playersData).map(p => ({
@@ -107,17 +153,21 @@ function setupFirebaseListeners() {
         updatePlayersList();
         updateStartButton();
         updateWaitingMessage();
+        updateGameInfo();
     });
     
     // Слушаем начало игры
     roomRef.child('gameStarted').on('value', (snapshot) => {
         gameStarted = snapshot.val() || false;
+        console.log('🎮 Статус игры:', gameStarted);
         
         if (gameStarted) {
             // Скрываем список игр, показываем игровое поле
             document.getElementById('games-selection').style.display = 'none';
             document.getElementById('game-canvas').style.display = 'block';
-            document.getElementById('game-title').textContent = `🎮 ${getGameName(selectedGame)}`;
+            
+            const gameName = getGameName(selectedGame);
+            document.getElementById('game-title').textContent = `🎮 ${gameName}`;
             
             // Если игрок наблюдатель, показываем подсказку
             if (currentPlayer.isSpectator) {
@@ -126,20 +176,35 @@ function setupFirebaseListeners() {
                     showSpectatorHint();
                 }, 2000);
             }
+        } else {
+            document.getElementById('games-selection').style.display = 'block';
+            document.getElementById('game-canvas').style.display = 'none';
         }
     });
     
     // Слушаем выбранную игру
     roomRef.child('selectedGame').on('value', (snapshot) => {
         selectedGame = snapshot.val();
+        console.log('🎲 Выбрана игра:', selectedGame);
+        
+        if (selectedGame) {
+            // Подсвечиваем выбранную игру
+            document.querySelectorAll('.game-option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            
+            const selectedElement = document.querySelector(`[data-game="${selectedGame}"]`);
+            if (selectedElement) {
+                selectedElement.classList.add('selected');
+            }
+        }
     });
     
-    // Слушаем матчи
-    roomRef.child('matches').on('value', (snapshot) => {
-        const matches = snapshot.val();
-        if (matches && gameEngine) {
-            gameEngine.matches = Object.values(matches);
-            updateGameInfo();
+    // Слушаем сообщения чата
+    chatRef.on('child_added', (snapshot) => {
+        const chatData = snapshot.val();
+        if (chatData.sender !== currentPlayer.nickname) {
+            addGlobalMessage(chatData.sender, chatData.message);
         }
     });
 }
@@ -245,6 +310,125 @@ function updateWaitingMessage() {
     }
 }
 
+// Выбор игры (только для админа)
+async function selectGame(gameName) {
+    if (!currentPlayer.isAdmin) {
+        alert('Только администратор может выбирать игру!');
+        return;
+    }
+    
+    console.log('🎲 Выбрана игра:', gameName);
+    
+    try {
+        await roomRef.update({ selectedGame: gameName });
+        console.log('✅ Игра сохранена в Firebase');
+    } catch (error) {
+        console.error('❌ Ошибка сохранения игры:', error);
+    }
+}
+
+// Начало выбранной игры
+async function startSelectedGame() {
+    if (!currentPlayer.isAdmin) {
+        alert('Только администратор может начать игру!');
+        return;
+    }
+    
+    if (currentPlayers.length < 2) {
+        alert('Нужно минимум 2 игрока для начала игры!');
+        return;
+    }
+    
+    if (!selectedGame) {
+        alert('Сначала выберите игру!');
+        return;
+    }
+    
+    console.log('🎮 Начало игры:', selectedGame);
+    
+    try {
+        // Создаем пары игроков
+        const matches = createMatches(currentPlayers);
+        
+        // Сохраняем в Firebase
+        await roomRef.update({
+            gameStarted: true,
+            selectedGame: selectedGame,
+            matches: matches,
+            startTime: getCurrentTimestamp()
+        });
+        
+        console.log('✅ Игра начата, пары созданы:', matches);
+        
+    } catch (error) {
+        console.error('❌ Ошибка начала игры:', error);
+        alert('Ошибка: ' + error.message);
+    }
+}
+
+// Создание пар для игры
+function createMatches(players) {
+    // Перемешиваем игроков
+    const shuffled = [...players].sort(() => Math.random() - 0.5);
+    const matches = {};
+    const spectators = [];
+    
+    console.log('🔄 Перемешанные игроки:', shuffled.map(p => p.nickname));
+    
+    for (let i = 0; i < shuffled.length; i += 2) {
+        if (i + 1 < shuffled.length) {
+            const matchId = `match_${Date.now()}_${i}`;
+            const match = {
+                id: matchId,
+                player1: {
+                    id: shuffled[i].id,
+                    nickname: shuffled[i].nickname
+                },
+                player2: {
+                    id: shuffled[i + 1].id,
+                    nickname: shuffled[i + 1].nickname
+                },
+                currentTurn: Math.random() < 0.5 ? shuffled[i].id : shuffled[i + 1].id,
+                moves: [],
+                startTime: Date.now(),
+                gameState: {}
+            };
+            
+            matches[matchId] = match;
+            
+            // Обновляем статус игроков в Firebase
+            playersRef.child(shuffled[i].nickname).update({
+                isSpectator: false,
+                opponent: shuffled[i + 1].nickname,
+                matchId: matchId
+            });
+            
+            playersRef.child(shuffled[i + 1].nickname).update({
+                isSpectator: false,
+                opponent: shuffled[i].nickname,
+                matchId: matchId
+            });
+            
+            console.log(`✅ Пара ${i/2 + 1}: ${shuffled[i].nickname} vs ${shuffled[i + 1].nickname}`);
+            
+        } else {
+            // Оставшийся игрок - наблюдатель
+            spectators.push(shuffled[i]);
+            
+            playersRef.child(shuffled[i].nickname).update({
+                isSpectator: true,
+                opponent: null,
+                matchId: null,
+                viewingPlayer: shuffled[0]?.id
+            });
+            
+            console.log(`👁️ Наблюдатель: ${shuffled[i].nickname}`);
+        }
+    }
+    
+    return matches;
+}
+
 // Копирование кода комнаты
 function copyRoomCode() {
     const roomCode = document.getElementById('room-code-display').textContent;
@@ -272,134 +456,6 @@ function copyRoomCode() {
     document.body.removeChild(textarea);
 }
 
-// Выбор игры (только для админа)
-function selectGame(gameName) {
-    if (!currentPlayer.isAdmin) {
-        alert('Только администратор может выбирать игру!');
-        return;
-    }
-    
-    selectedGame = gameName;
-    
-    // Подсвечиваем выбранную игру
-    document.querySelectorAll('.game-option').forEach(opt => {
-        opt.classList.remove('selected');
-    });
-    
-    const selectedElement = document.querySelector(`[data-game="${gameName}"]`);
-    if (selectedElement) {
-        selectedElement.classList.add('selected');
-    }
-    
-    // Сохраняем в Firebase
-    roomRef.update({ selectedGame: gameName });
-}
-
-// Начало выбранной игры
-async function startSelectedGame() {
-    if (!currentPlayer.isAdmin) {
-        alert('Только администратор может начать игру!');
-        return;
-    }
-    
-    if (currentPlayers.length < 2) {
-        alert('Нужно минимум 2 игрока для начала игры!');
-        return;
-    }
-    
-    if (!selectedGame) {
-        alert('Сначала выберите игру!');
-        return;
-    }
-    
-    // Создаем пары игроков
-    const matches = createMatches(currentPlayers);
-    
-    // Сохраняем в Firebase
-    await roomRef.update({
-        gameStarted: true,
-        selectedGame: selectedGame,
-        matches: matches,
-        startTime: getCurrentTimestamp()
-    });
-    
-    // Инициализируем игровой движок
-    if (!gameEngine) {
-        gameEngine = new GameEngine();
-    }
-    
-    gameEngine.initGame(selectedGame, currentPlayers);
-}
-
-// Создание пар для игры
-function createMatches(players) {
-    // Перемешиваем игроков
-    const shuffled = [...players].sort(() => Math.random() - 0.5);
-    const matches = [];
-    const spectators = [];
-    
-    for (let i = 0; i < shuffled.length; i += 2) {
-        if (i + 1 < shuffled.length) {
-            const match = {
-                id: matches.length + 1,
-                player1: {
-                    id: shuffled[i].id,
-                    nickname: shuffled[i].nickname
-                },
-                player2: {
-                    id: shuffled[i + 1].id,
-                    nickname: shuffled[i + 1].nickname
-                },
-                currentTurn: Math.random() < 0.5 ? shuffled[i].id : shuffled[i + 1].id,
-                moves: [],
-                startTime: Date.now()
-            };
-            
-            matches.push(match);
-            
-            // Обновляем статус игроков
-            playersRef.child(shuffled[i].nickname).update({
-                isSpectator: false,
-                opponent: shuffled[i + 1].nickname,
-                matchId: match.id
-            });
-            
-            playersRef.child(shuffled[i + 1].nickname).update({
-                isSpectator: false,
-                opponent: shuffled[i].nickname,
-                matchId: match.id
-            });
-        } else {
-            // Оставшийся игрок - наблюдатель
-            spectators.push(shuffled[i]);
-            
-            playersRef.child(shuffled[i].nickname).update({
-                isSpectator: true,
-                opponent: null,
-                matchId: null,
-                viewingPlayer: shuffled[0]?.id
-            });
-        }
-    }
-    
-    return matches;
-}
-
-// Получение имени игры
-function getGameName(gameName) {
-    const names = {
-        'sea-battle': 'Морской бой',
-        'tic-tac-toe': 'Крестики-нолики',
-        'gallows': 'Виселица',
-        'crocodile': 'Крокодил',
-        'danetki': 'Данетки',
-        'hat': 'Шляпа',
-        'who-am-i': 'Кто я?',
-        'balda': 'Балда'
-    };
-    return names[gameName] || gameName;
-}
-
 // Функции чата
 function sendGlobalMessage() {
     const input = document.getElementById('global-chat-input');
@@ -407,11 +463,11 @@ function sendGlobalMessage() {
     
     if (!message) return;
     
-    // Добавляем сообщение в чат
+    // Добавляем свое сообщение в чат
     addGlobalMessage(currentPlayer.nickname, message);
     
     // Отправляем в Firebase
-    roomRef.child('chat').push({
+    chatRef.push({
         sender: currentPlayer.nickname,
         message: message,
         timestamp: getCurrentTimestamp()
@@ -439,19 +495,9 @@ function addGlobalMessage(sender, message) {
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
-// Слушаем новые сообщения в Firebase
-if (roomRef) {
-    roomRef.child('chat').on('child_added', (snapshot) => {
-        const chatData = snapshot.val();
-        if (chatData.sender !== currentPlayer.nickname) {
-            addGlobalMessage(chatData.sender, chatData.message);
-        }
-    });
-}
-
 // Функции для наблюдателя
 function spectatorNext() {
-    if (!currentPlayer.isSpectator || !gameEngine) return;
+    if (!currentPlayer.isSpectator) return;
     
     const players = currentPlayers.filter(p => !p.isSpectator);
     if (players.length === 0) return;
@@ -474,7 +520,7 @@ function spectatorNext() {
 }
 
 function spectatorPrev() {
-    if (!currentPlayer.isSpectator || !gameEngine) return;
+    if (!currentPlayer.isSpectator) return;
     
     const players = currentPlayers.filter(p => !p.isSpectator);
     if (players.length === 0) return;
@@ -532,20 +578,6 @@ function updateGameInfo() {
         document.getElementById('game-turn').style.display = 'flex';
         
         document.getElementById('opponent-name').textContent = currentPlayer.opponent || '—';
-        
-        // Определяем, чей ход
-        if (gameEngine && gameEngine.matches) {
-            const match = gameEngine.matches.find(m => 
-                m.player1.id === currentPlayer.id || m.player2.id === currentPlayer.id
-            );
-            
-            if (match) {
-                const isMyTurn = match.currentTurn === currentPlayer.id;
-                const turnIndicator = document.getElementById('turn-indicator');
-                turnIndicator.textContent = isMyTurn ? 'Ваш ход' : 'Ход соперника';
-                turnIndicator.style.color = isMyTurn ? '#27ae60' : '#e74c3c';
-            }
-        }
     }
 }
 
@@ -605,6 +637,7 @@ function setupExitHandlers() {
         }
     });
     
+    // Периодическое обновление присутствия
     setInterval(() => {
         if (roomRef && currentPlayer) {
             playersRef.child(currentPlayer.nickname).update({
@@ -612,6 +645,21 @@ function setupExitHandlers() {
             });
         }
     }, 30000);
+}
+
+// Получение имени игры
+function getGameName(gameName) {
+    const names = {
+        'sea-battle': 'Морской бой',
+        'tic-tac-toe': 'Крестики-нолики',
+        'gallows': 'Виселица',
+        'crocodile': 'Крокодил',
+        'danetki': 'Данетки',
+        'hat': 'Шляпа',
+        'who-am-i': 'Кто я?',
+        'balda': 'Балда'
+    };
+    return names[gameName] || gameName;
 }
 
 // Получение текущего времени
