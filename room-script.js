@@ -3,13 +3,12 @@ let currentPlayer = null;
 let roomId = null;
 let roomRef = null;
 let playersRef = null;
-let gameRef = null;
 let currentPlayers = [];
 let currentAdmin = null;
 let selectedGame = null;
-let selectedMode = null;
 let gameStarted = false;
-let teams = [];
+let gameEngine = null;
+let spectatorHintTimeout = null;
 
 // Загружаем данные при открытии комнаты
 document.addEventListener('DOMContentLoaded', async function() {
@@ -25,14 +24,22 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     // Создаем текущего игрока
     currentPlayer = {
+        id: `${nickname}-${Date.now()}`,
         nickname: nickname,
-        isAdmin: false
+        isAdmin: false,
+        score: 0,
+        isSpectator: false
     };
     
     // Получаем ссылки на Firebase
-    roomRef = roomsRef.child(roomId);
-    playersRef = roomRef.child('players');
-    gameRef = roomRef.child('game');
+    if (typeof roomsRef !== 'undefined') {
+        roomRef = roomsRef.child(roomId);
+        playersRef = roomRef.child('players');
+    } else {
+        console.error('Firebase не подключен');
+        alert('Ошибка подключения к базе данных');
+        return;
+    }
     
     // Проверяем, существует ли комната
     const snapshot = await roomRef.once('value');
@@ -46,10 +53,14 @@ document.addEventListener('DOMContentLoaded', async function() {
     currentAdmin = roomData.admin;
     currentPlayer.isAdmin = (roomData.admin === nickname);
     
-    // Обновляем свое подключение
-    await playersRef.child(nickname).update({
+    // Добавляем игрока в комнату
+    await playersRef.child(nickname).set({
+        id: currentPlayer.id,
+        nickname: nickname,
+        isAdmin: currentPlayer.isAdmin,
         connected: true,
-        lastSeen: getCurrentTimestamp()
+        lastSeen: getCurrentTimestamp(),
+        score: 0
     });
     
     // Отображаем код комнаты
@@ -61,11 +72,11 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Слушаем изменения в комнате
     setupFirebaseListeners();
     
-    // Скрываем командный чат
-    document.querySelector('.team-chat').style.display = 'none';
-    
     // Настраиваем обработчики выхода
     setupExitHandlers();
+    
+    // Обновляем информацию на панели
+    document.getElementById('player-name').textContent = nickname;
 });
 
 // Настройка слушателей Firebase
@@ -78,13 +89,19 @@ function setupFirebaseListeners() {
         // Преобразуем в массив
         currentPlayers = Object.values(playersData).map(p => ({
             ...p,
-            id: p.nickname
+            id: p.id || p.nickname
         }));
         
-        // Обновляем админа
-        const admin = Object.values(playersData).find(p => p.isAdmin);
+        // Находим админа
+        const admin = currentPlayers.find(p => p.isAdmin);
         if (admin) {
             currentAdmin = admin.nickname;
+        }
+        
+        // Обновляем себя
+        const myself = currentPlayers.find(p => p.nickname === currentPlayer.nickname);
+        if (myself) {
+            currentPlayer = myself;
         }
         
         updatePlayersList();
@@ -92,22 +109,38 @@ function setupFirebaseListeners() {
         updateWaitingMessage();
     });
     
-    // Слушаем изменения игры
+    // Слушаем начало игры
     roomRef.child('gameStarted').on('value', (snapshot) => {
         gameStarted = snapshot.val() || false;
+        
+        if (gameStarted) {
+            // Скрываем список игр, показываем игровое поле
+            document.getElementById('games-selection').style.display = 'none';
+            document.getElementById('game-canvas').style.display = 'block';
+            document.getElementById('game-title').textContent = `🎮 ${getGameName(selectedGame)}`;
+            
+            // Если игрок наблюдатель, показываем подсказку
+            if (currentPlayer.isSpectator) {
+                document.getElementById('spectator-controls').style.display = 'flex';
+                setTimeout(() => {
+                    showSpectatorHint();
+                }, 2000);
+            }
+        }
     });
     
+    // Слушаем выбранную игру
     roomRef.child('selectedGame').on('value', (snapshot) => {
         selectedGame = snapshot.val();
     });
     
-    roomRef.child('gameMode').on('value', (snapshot) => {
-        selectedMode = snapshot.val();
-    });
-    
-    // Слушаем команды
-    roomRef.child('teams').on('value', (snapshot) => {
-        teams = snapshot.val() || [];
+    // Слушаем матчи
+    roomRef.child('matches').on('value', (snapshot) => {
+        const matches = snapshot.val();
+        if (matches && gameEngine) {
+            gameEngine.matches = Object.values(matches);
+            updateGameInfo();
+        }
     });
 }
 
@@ -122,19 +155,19 @@ function updatePlayersList() {
         const playerCard = document.createElement('div');
         playerCard.className = `player-card ${player.isAdmin ? 'admin' : ''}`;
         
-        let statusIcon = player.connected ? '✅' : '❌';
+        let statusIcon = '✅';
         if (player.isAdmin) statusIcon = '👑';
-        
-        const teamColorClass = player.teamColor ? ` team-${player.teamColor}` : '';
+        if (player.isSpectator) statusIcon = '👁️';
         
         playerCard.innerHTML = `
-            <span class="player-name${teamColorClass}">${player.nickname}</span>
+            <span class="player-name">${player.nickname}</span>
             <span class="player-status">${statusIcon}</span>
         `;
         
         playersList.appendChild(playerCard);
     });
     
+    // Добавляем пустые места до 8 игроков
     for (let i = currentPlayers.length; i < 8; i++) {
         const emptyCard = document.createElement('div');
         emptyCard.className = 'player-card empty';
@@ -144,6 +177,34 @@ function updatePlayersList() {
         `;
         playersList.appendChild(emptyCard);
     }
+    
+    // Обновляем счет
+    updateScoresList();
+}
+
+// Обновление списка счета
+function updateScoresList() {
+    const scoresList = document.getElementById('scores-list');
+    if (!scoresList) return;
+    
+    scoresList.innerHTML = '';
+    
+    // Сортируем по убыванию очков
+    const sorted = [...currentPlayers].sort((a, b) => (b.score || 0) - (a.score || 0));
+    
+    sorted.forEach(player => {
+        const scoreItem = document.createElement('div');
+        scoreItem.className = 'score-item';
+        
+        let nameDisplay = player.nickname;
+        if (player.isSpectator) nameDisplay += ' 👁️';
+        
+        scoreItem.innerHTML = `
+            <span class="player-name">${nameDisplay}</span>
+            <span class="player-score">${player.score || 0}</span>
+        `;
+        scoresList.appendChild(scoreItem);
+    });
 }
 
 // Обновление кнопки начала игры
@@ -202,6 +263,8 @@ function copyRoomCode() {
         setTimeout(() => {
             btn.textContent = originalText;
         }, 2000);
+        
+        showNotification('Код скопирован!', 1500);
     } catch (err) {
         alert('Не удалось скопировать код');
     }
@@ -210,13 +273,13 @@ function copyRoomCode() {
 }
 
 // Выбор игры (только для админа)
-async function selectGame(gameName) {
+function selectGame(gameName) {
     if (!currentPlayer.isAdmin) {
         alert('Только администратор может выбирать игру!');
         return;
     }
     
-    await roomRef.update({ selectedGame: gameName });
+    selectedGame = gameName;
     
     // Подсвечиваем выбранную игру
     document.querySelectorAll('.game-option').forEach(opt => {
@@ -228,55 +291,8 @@ async function selectGame(gameName) {
         selectedElement.classList.add('selected');
     }
     
-    // Показываем настройки режима
-    showGameModes(gameName);
-}
-
-// Показ режимов для выбранной игры
-function showGameModes(gameName) {
-    const settings = gameEngine.gameSettings[gameName];
-    if (!settings) return;
-    
-    const modeSettings = document.getElementById('game-mode-settings');
-    const modeOptions = document.getElementById('mode-options');
-    
-    modeOptions.innerHTML = '';
-    
-    const oldCloseBtn = modeSettings.querySelector('.close-settings');
-    if (oldCloseBtn) oldCloseBtn.remove();
-    
-    const closeBtn = document.createElement('button');
-    closeBtn.className = 'close-settings';
-    closeBtn.innerHTML = '✕';
-    closeBtn.onclick = () => {
-        modeSettings.style.display = 'none';
-    };
-    modeSettings.appendChild(closeBtn);
-    
-    settings.modes.forEach(mode => {
-        const modeBtn = document.createElement('button');
-        modeBtn.className = 'mode-btn';
-        modeBtn.textContent = mode;
-        modeBtn.onclick = () => selectGameMode(mode);
-        modeOptions.appendChild(modeBtn);
-    });
-    
-    modeSettings.style.display = 'block';
-}
-
-// Выбор режима игры
-async function selectGameMode(mode) {
-    await roomRef.update({ gameMode: mode });
-    
-    document.querySelectorAll('.mode-btn').forEach(btn => {
-        btn.classList.remove('selected');
-    });
-    
-    event.target.classList.add('selected');
-    
-    setTimeout(() => {
-        document.getElementById('game-mode-settings').style.display = 'none';
-    }, 2000);
+    // Сохраняем в Firebase
+    roomRef.update({ selectedGame: gameName });
 }
 
 // Начало выбранной игры
@@ -296,174 +312,80 @@ async function startSelectedGame() {
         return;
     }
     
-    if (!selectedMode) {
-        alert('Выберите режим игры!');
-        return;
-    }
-    
-    // Распределяем команды
-    const teams = distributeTeams(selectedMode, currentPlayers);
+    // Создаем пары игроков
+    const matches = createMatches(currentPlayers);
     
     // Сохраняем в Firebase
     await roomRef.update({
         gameStarted: true,
-        teams: teams,
-        currentTurn: 1
+        selectedGame: selectedGame,
+        matches: matches,
+        startTime: getCurrentTimestamp()
     });
     
-    // Показываем игрокам их команды
-    showTeamAssignment(teams);
+    // Инициализируем игровой движок
+    if (!gameEngine) {
+        gameEngine = new GameEngine();
+    }
     
-    // Запускаем игру через движок
-    const config = gameEngine.initGame(selectedGame, currentPlayers, selectedMode, teams);
-    
-    // Скрываем список игр, показываем игровое поле
-    document.getElementById('games-selection').style.display = 'none';
-    document.getElementById('game-canvas').style.display = 'block';
-    document.getElementById('game-mode-settings').style.display = 'none';
-    
-    // Показываем командный чат
-    document.querySelector('.team-chat').style.display = 'flex';
-    
-    // Обновляем статус
-    document.getElementById('game-status').textContent = `Игра: ${getGameName(selectedGame)} (${selectedMode})`;
-    
-    // Загружаем игру
-    loadGame(selectedGame, config);
+    gameEngine.initGame(selectedGame, currentPlayers);
 }
 
-// Распределение команд
-function distributeTeams(mode, players) {
-    const colors = ['желтый', 'синий', 'красный', 'зеленый'];
+// Создание пар для игры
+function createMatches(players) {
+    // Перемешиваем игроков
     const shuffled = [...players].sort(() => Math.random() - 0.5);
-    const usedColors = [];
-    const teams = [];
+    const matches = [];
+    const spectators = [];
     
-    if (mode.includes('x')) {
-        const [playersPerGame, gamesCount] = mode.split('x').map(Number);
-        
-        for (let i = 0; i < gamesCount; i++) {
-            const color = getRandomTeamColor(usedColors);
-            usedColors.push(color);
+    for (let i = 0; i < shuffled.length; i += 2) {
+        if (i + 1 < shuffled.length) {
+            const match = {
+                id: matches.length + 1,
+                player1: {
+                    id: shuffled[i].id,
+                    nickname: shuffled[i].nickname
+                },
+                player2: {
+                    id: shuffled[i + 1].id,
+                    nickname: shuffled[i + 1].nickname
+                },
+                currentTurn: Math.random() < 0.5 ? shuffled[i].id : shuffled[i + 1].id,
+                moves: [],
+                startTime: Date.now()
+            };
             
-            const teamPlayers = [];
-            for (let j = 0; j < playersPerGame; j++) {
-                if (shuffled.length > 0) {
-                    const player = shuffled.shift();
-                    player.teamColor = color;
-                    teamPlayers.push(player);
-                }
-            }
+            matches.push(match);
             
-            teams.push({
-                id: i + 1,
-                color: color,
-                players: teamPlayers,
-                score: 0
+            // Обновляем статус игроков
+            playersRef.child(shuffled[i].nickname).update({
+                isSpectator: false,
+                opponent: shuffled[i + 1].nickname,
+                matchId: match.id
+            });
+            
+            playersRef.child(shuffled[i + 1].nickname).update({
+                isSpectator: false,
+                opponent: shuffled[i].nickname,
+                matchId: match.id
+            });
+        } else {
+            // Оставшийся игрок - наблюдатель
+            spectators.push(shuffled[i]);
+            
+            playersRef.child(shuffled[i].nickname).update({
+                isSpectator: true,
+                opponent: null,
+                matchId: null,
+                viewingPlayer: shuffled[0]?.id
             });
         }
-    } else if (mode.includes('v')) {
-        const [team1size, team2size] = mode.split('v').map(Number);
-        
-        // Команда 1
-        const color1 = getRandomTeamColor(usedColors);
-        usedColors.push(color1);
-        const team1 = [];
-        for (let i = 0; i < team1size; i++) {
-            if (shuffled.length > 0) {
-                const player = shuffled.shift();
-                player.teamColor = color1;
-                team1.push(player);
-            }
-        }
-        teams.push({ id: 1, color: color1, players: team1, score: 0 });
-        
-        // Команда 2
-        const color2 = getRandomTeamColor(usedColors);
-        usedColors.push(color2);
-        const team2 = [];
-        for (let i = 0; i < team2size; i++) {
-            if (shuffled.length > 0) {
-                const player = shuffled.shift();
-                player.teamColor = color2;
-                team2.push(player);
-            }
-        }
-        teams.push({ id: 2, color: color2, players: team2, score: 0 });
     }
     
-    // Оставшиеся - наблюдатели
-    shuffled.forEach(player => {
-        player.isSpectator = true;
-    });
-    
-    return teams;
+    return matches;
 }
 
-// Показ распределения команд
-function showTeamAssignment(teams) {
-    const playerTeam = teams.find(t => 
-        t.players.some(p => p.nickname === currentPlayer.nickname)
-    );
-    
-    let message = '';
-    if (playerTeam) {
-        const teammates = playerTeam.players
-            .filter(p => p.nickname !== currentPlayer.nickname)
-            .map(p => p.nickname)
-            .join(', ');
-        
-        message = `🎨 Команда ${playerTeam.color}\n\n`;
-        if (teammates) {
-            message += `С вами: ${teammates}`;
-        } else {
-            message += 'Вы один в команде';
-        }
-    } else {
-        message = '👁️ Вы наблюдатель';
-    }
-    
-    if (message) {
-        showNotification(message, 5000);
-    }
-}
-
-// Показать уведомление
-function showNotification(message, duration = 3000) {
-    const notification = document.createElement('div');
-    notification.className = 'team-notification';
-    notification.textContent = message;
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        notification.remove();
-    }, duration);
-}
-
-// Загрузка игры
-function loadGame(gameName, config) {
-    if (document.querySelector(`script[src="games/${gameName}.js"]`)) {
-        if (window[`init${camelCase(gameName)}`]) {
-            window[`init${camelCase(gameName)}`](config);
-        }
-        return;
-    }
-    
-    const script = document.createElement('script');
-    script.src = `games/${gameName}.js`;
-    script.onload = () => {
-        if (window[`init${camelCase(gameName)}`]) {
-            window[`init${camelCase(gameName)}`](config);
-        }
-    };
-    document.head.appendChild(script);
-}
-
-// Вспомогательные функции
-function camelCase(str) {
-    return str.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('');
-}
-
+// Получение имени игры
 function getGameName(gameName) {
     const names = {
         'sea-battle': 'Морской бой',
@@ -478,38 +400,18 @@ function getGameName(gameName) {
     return names[gameName] || gameName;
 }
 
-function getRandomTeamColor(usedColors = []) {
-    const colors = ['желтый', 'синий', 'красный', 'зеленый'];
-    const available = colors.filter(c => !usedColors.includes(c));
-    if (available.length === 0) return colors[Math.floor(Math.random() * colors.length)];
-    return available[Math.floor(Math.random() * available.length)];
-}
-
 // Функции чата
-async function sendTeamMessage() {
-    const input = document.getElementById('team-chat-input');
-    const message = input.value.trim();
-    
-    if (!message) return;
-    
-    // Сохраняем сообщение в Firebase
-    await roomRef.child('chat').child('team').push({
-        sender: currentPlayer.nickname,
-        message: message,
-        timestamp: getCurrentTimestamp()
-    });
-    
-    input.value = '';
-}
-
-async function sendGlobalMessage() {
+function sendGlobalMessage() {
     const input = document.getElementById('global-chat-input');
     const message = input.value.trim();
     
     if (!message) return;
     
-    // Сохраняем сообщение в Firebase
-    await roomRef.child('chat').child('global').push({
+    // Добавляем сообщение в чат
+    addGlobalMessage(currentPlayer.nickname, message);
+    
+    // Отправляем в Firebase
+    roomRef.child('chat').push({
         sender: currentPlayer.nickname,
         message: message,
         timestamp: getCurrentTimestamp()
@@ -518,70 +420,80 @@ async function sendGlobalMessage() {
     input.value = '';
 }
 
-// Настройка обработчиков выхода
-function setupExitHandlers() {
-    // При закрытии вкладки
-    window.addEventListener('beforeunload', function() {
-        if (roomRef && currentPlayer) {
-            playersRef.child(currentPlayer.nickname).update({
-                connected: false,
-                lastSeen: getCurrentTimestamp()
-            });
-        }
-    });
+function addGlobalMessage(sender, message) {
+    const messagesDiv = document.getElementById('global-chat-messages');
+    if (!messagesDiv) return;
     
-    // Периодическое обновление присутствия
-    setInterval(async () => {
-        if (roomRef && currentPlayer) {
-            await playersRef.child(currentPlayer.nickname).update({
-                lastSeen: getCurrentTimestamp()
-            });
-        }
-    }, 30000); // Каждые 30 секунд
+    const messageElement = document.createElement('div');
+    messageElement.className = 'message';
+    
+    const time = new Date().toLocaleTimeString().slice(0, 5);
+    
+    messageElement.innerHTML = `
+        <span class="sender">${sender}</span>
+        <span class="time">${time}</span>
+        <div>${message}</div>
+    `;
+    
+    messagesDiv.appendChild(messageElement);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
-// Отправка по Enter
-document.addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-        if (e.target.id === 'team-chat-input') {
-            sendTeamMessage();
-        } else if (e.target.id === 'global-chat-input') {
-            sendGlobalMessage();
+// Слушаем новые сообщения в Firebase
+if (roomRef) {
+    roomRef.child('chat').on('child_added', (snapshot) => {
+        const chatData = snapshot.val();
+        if (chatData.sender !== currentPlayer.nickname) {
+            addGlobalMessage(chatData.sender, chatData.message);
         }
-    }
-);
+    });
+}
 
 // Функции для наблюдателя
-let spectatorHintTimeout = null;
-
 function spectatorNext() {
-    if (!currentPlayer.isSpectator) return;
+    if (!currentPlayer.isSpectator || !gameEngine) return;
     
-    const targetId = gameEngine.spectatorSwitch(currentPlayer.id, 'next');
-    if (targetId) {
-        // Показываем подсказку
-        showSpectatorHint();
-        
-        // Здесь можно обновить отображение игры
-        const gameState = gameEngine.getGameState(currentPlayer.id);
-        if (gameState && window.updateGameView) {
-            window.updateGameView(targetId);
-        }
-    }
+    const players = currentPlayers.filter(p => !p.isSpectator);
+    if (players.length === 0) return;
+    
+    let currentIndex = players.findIndex(p => p.id === currentPlayer.viewingPlayer);
+    if (currentIndex === -1) currentIndex = 0;
+    
+    currentIndex = (currentIndex + 1) % players.length;
+    currentPlayer.viewingPlayer = players[currentIndex].id;
+    
+    document.getElementById('spectator-viewing').textContent = 
+        `Наблюдение: ${players[currentIndex].nickname}`;
+    
+    showSpectatorHint();
+    
+    // Обновляем в Firebase
+    playersRef.child(currentPlayer.nickname).update({
+        viewingPlayer: currentPlayer.viewingPlayer
+    });
 }
 
 function spectatorPrev() {
-    if (!currentPlayer.isSpectator) return;
+    if (!currentPlayer.isSpectator || !gameEngine) return;
     
-    const targetId = gameEngine.spectatorSwitch(currentPlayer.id, 'prev');
-    if (targetId) {
-        showSpectatorHint();
-        
-        const gameState = gameEngine.getGameState(currentPlayer.id);
-        if (gameState && window.updateGameView) {
-            window.updateGameView(targetId);
-        }
-    }
+    const players = currentPlayers.filter(p => !p.isSpectator);
+    if (players.length === 0) return;
+    
+    let currentIndex = players.findIndex(p => p.id === currentPlayer.viewingPlayer);
+    if (currentIndex === -1) currentIndex = 0;
+    
+    currentIndex = (currentIndex - 1 + players.length) % players.length;
+    currentPlayer.viewingPlayer = players[currentIndex].id;
+    
+    document.getElementById('spectator-viewing').textContent = 
+        `Наблюдение: ${players[currentIndex].nickname}`;
+    
+    showSpectatorHint();
+    
+    // Обновляем в Firebase
+    playersRef.child(currentPlayer.nickname).update({
+        viewingPlayer: currentPlayer.viewingPlayer
+    });
 }
 
 // Показать подсказку для наблюдателя
@@ -600,16 +512,51 @@ function showSpectatorHint() {
     }
 }
 
-// Обработка клика для наблюдателя (переключение вида)
-function handleSpectatorClick(event) {
-    if (!currentPlayer.isSpectator) return;
+// Обновление игровой информации
+function updateGameInfo() {
+    if (!gameStarted || !currentPlayer) return;
     
-    // Получаем координаты клика
+    if (currentPlayer.isSpectator) {
+        document.getElementById('spectator-controls').style.display = 'flex';
+        document.getElementById('game-opponent').style.display = 'none';
+        document.getElementById('game-turn').style.display = 'none';
+        
+        const viewing = currentPlayers.find(p => p.id === currentPlayer.viewingPlayer);
+        if (viewing) {
+            document.getElementById('spectator-viewing').textContent = 
+                `Наблюдение: ${viewing.nickname}`;
+        }
+    } else {
+        document.getElementById('spectator-controls').style.display = 'none';
+        document.getElementById('game-opponent').style.display = 'flex';
+        document.getElementById('game-turn').style.display = 'flex';
+        
+        document.getElementById('opponent-name').textContent = currentPlayer.opponent || '—';
+        
+        // Определяем, чей ход
+        if (gameEngine && gameEngine.matches) {
+            const match = gameEngine.matches.find(m => 
+                m.player1.id === currentPlayer.id || m.player2.id === currentPlayer.id
+            );
+            
+            if (match) {
+                const isMyTurn = match.currentTurn === currentPlayer.id;
+                const turnIndicator = document.getElementById('turn-indicator');
+                turnIndicator.textContent = isMyTurn ? 'Ваш ход' : 'Ход соперника';
+                turnIndicator.style.color = isMyTurn ? '#27ae60' : '#e74c3c';
+            }
+        }
+    }
+}
+
+// Обработка клика для наблюдателя
+function handleSpectatorClick(event) {
+    if (!currentPlayer.isSpectator || !gameStarted) return;
+    
     const rect = event.target.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const width = rect.width;
     
-    // Если кликнули в левую половину - предыдущий, в правую - следующий
     if (x < width / 2) {
         spectatorPrev();
     } else {
@@ -617,65 +564,57 @@ function handleSpectatorClick(event) {
     }
 }
 
-// Добавляем обработчик клика для наблюдателей
+// Добавляем обработчик клика
 document.addEventListener('click', function(e) {
     if (currentPlayer?.isSpectator && gameStarted) {
-        // Проверяем, что кликнули по игровому полю
         if (e.target.closest('#game-canvas') || e.target.closest('.game-canvas')) {
             handleSpectatorClick(e);
         }
     }
 });
 
-// Обновление информационной панели
-function updateGameInfo() {
-    if (!gameStarted || !currentPlayer) return;
-    
-    const gameState = gameEngine.getGameState(currentPlayer.id);
-    if (!gameState) return;
-    
-    const playerNameSpan = document.getElementById('player-name');
-    const opponentNameSpan = document.getElementById('opponent-name');
-    const turnIndicator = document.getElementById('turn-indicator');
-    const spectatorControls = document.getElementById('spectator-controls');
-    const gameOpponent = document.getElementById('game-opponent');
-    const gameTurn = document.getElementById('game-turn');
-    
-    if (currentPlayer.isSpectator) {
-        // Режим наблюдателя
-        spectatorControls.style.display = 'flex';
-        gameOpponent.style.display = 'none';
-        gameTurn.style.display = 'none';
-        
-        if (gameState.viewingPlayer) {
-            document.getElementById('spectator-viewing').textContent = 
-                `Наблюдение: ${gameState.viewingPlayer.nickname}`;
-        }
-    } else {
-        // Режим игрока
-        spectatorControls.style.display = 'none';
-        gameOpponent.style.display = 'flex';
-        gameTurn.style.display = 'flex';
-        
-        playerNameSpan.textContent = currentPlayer.nickname;
-        opponentNameSpan.textContent = currentPlayer.opponent || '—';
-        
-        if (gameState.match) {
-            const isMyTurn = gameState.isMyTurn;
-            turnIndicator.textContent = isMyTurn ? 'Ваш ход' : 'Ход соперника';
-            turnIndicator.style.color = isMyTurn ? '#27ae60' : '#e74c3c';
+// Отправка по Enter
+document.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        if (e.target.id === 'global-chat-input') {
+            sendGlobalMessage();
         }
     }
+});
+
+// Показать уведомление
+function showNotification(message, duration = 3000) {
+    const notification = document.createElement('div');
+    notification.className = 'game-notification';
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.remove();
+    }, duration);
 }
 
-// Вызываем обновление информации при загрузке игры
-const originalLoadGame = loadGame;
-loadGame = function(gameName, config) {
-    originalLoadGame(gameName, config);
+// Настройка обработчиков выхода
+function setupExitHandlers() {
+    window.addEventListener('beforeunload', function() {
+        if (roomRef && currentPlayer) {
+            playersRef.child(currentPlayer.nickname).update({
+                connected: false,
+                lastSeen: getCurrentTimestamp()
+            });
+        }
+    });
     
-    // Обновляем информацию через секунду после загрузки
-    setTimeout(() => {
-        updateGameInfo();
-    }, 1000);
-};
+    setInterval(() => {
+        if (roomRef && currentPlayer) {
+            playersRef.child(currentPlayer.nickname).update({
+                lastSeen: getCurrentTimestamp()
+            });
+        }
+    }, 30000);
+}
 
+// Получение текущего времени
+function getCurrentTimestamp() {
+    return firebase.database.ServerValue.TIMESTAMP;
+}
