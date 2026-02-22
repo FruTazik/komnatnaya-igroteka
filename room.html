@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <title>Комната - Игротека</title>
     
     <!-- Стили -->
@@ -17,13 +17,26 @@
     <script src="firebase-config.js"></script>
     
     <style>
+        /* Временные стили для отладки */
+        .debug-info {
+            position: fixed;
+            bottom: 5px;
+            left: 5px;
+            background: rgba(0,0,0,0.7);
+            color: #0f0;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            z-index: 9999;
+        }
+        
         .loading-screen {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(255, 255, 255, 0.95);
+            background: rgba(255,255,255,0.95);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -35,10 +48,10 @@
         
         .loading-screen::after {
             content: '';
-            width: 50px;
-            height: 50px;
-            border: 5px solid #f3f3f3;
-            border-top: 5px solid #667eea;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
             border-radius: 50%;
             animation: spin 1s linear infinite;
             margin-left: 15px;
@@ -48,28 +61,14 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        
-        .debug-panel {
-            position: fixed;
-            bottom: 10px;
-            left: 10px;
-            background: rgba(0,0,0,0.8);
-            color: #0f0;
-            padding: 10px;
-            border-radius: 5px;
-            font-family: monospace;
-            font-size: 12px;
-            z-index: 9999;
-            max-width: 400px;
-            max-height: 200px;
-            overflow: auto;
-        }
     </style>
 </head>
 <body>
     <div id="loading-screen" class="loading-screen">
         Загрузка комнаты
     </div>
+    
+    <div class="debug-info" id="debug-info">Загрузка...</div>
     
     <div class="room-container">
         <!-- Левая панель с игроками -->
@@ -79,24 +78,18 @@
                 <!-- Сюда будут добавляться игроки -->
             </div>
             
-            <!-- Счет игроков -->
-            <div class="scores-panel">
-                <h4>🏆 Счет</h4>
-                <div id="scores-list" class="scores-list"></div>
-            </div>
-            
             <!-- Код комнаты -->
             <div class="room-code-block">
                 <p>Код комнаты:</p>
                 <div class="code-display">
                     <span id="room-code-display">#------</span>
-                    <button class="copy-btn" onclick="copyRoomCode()" title="Копировать код">📋</button>
+                    <button class="copy-btn" onclick="window.copyRoomCode()" title="Копировать код">📋</button>
                 </div>
                 <p class="small">Нажмите на кнопку, чтобы скопировать</p>
             </div>
             
             <!-- Кнопка начала игры -->
-            <button id="start-game-btn" class="start-game-btn" onclick="startSelectedGame()">
+            <button id="start-game-btn" class="start-game-btn" onclick="window.startSelectedGame()">
                 🎮 Начать игру
             </button>
         </div>
@@ -125,9 +118,9 @@
                     </div>
                 </div>
                 <div class="spectator-controls" id="spectator-controls">
-                    <button class="spectator-btn" onclick="spectatorPrev()">←</button>
+                    <button class="spectator-btn" onclick="window.spectatorPrev()">←</button>
                     <span id="spectator-viewing">Наблюдение: —</span>
-                    <button class="spectator-btn" onclick="spectatorNext()">→</button>
+                    <button class="spectator-btn" onclick="window.spectatorNext()">→</button>
                 </div>
             </div>
             
@@ -141,58 +134,58 @@
                     <div class="games-grid">
                         <!-- Ряд 1 -->
                         <div class="games-row">
-                            <div class="game-option" onclick="selectGame('sea-battle')" data-game="sea-battle">
+                            <div class="game-option" data-game="sea-battle">
                                 <div class="game-icon">🚢</div>
                                 <h3>Морской бой</h3>
-                                <p>2-8 игроков • 40 очков</p>
+                                <p>40 очков</p>
                             </div>
-                            <div class="game-option" onclick="selectGame('tic-tac-toe')" data-game="tic-tac-toe">
+                            <div class="game-option" data-game="tic-tac-toe">
                                 <div class="game-icon">❌⭕</div>
                                 <h3>Крестики-нолики</h3>
-                                <p>2-8 игроков • 10 очков</p>
+                                <p>10 очков</p>
                             </div>
-                            <div class="game-option" onclick="selectGame('gallows')" data-game="gallows">
+                            <div class="game-option" data-game="gallows">
                                 <div class="game-icon">😵</div>
                                 <h3>Виселица</h3>
-                                <p>2-8 игроков • 15 очков</p>
+                                <p>15 очков</p>
                             </div>
                         </div>
                         
                         <!-- Ряд 2 -->
                         <div class="games-row">
-                            <div class="game-option" onclick="selectGame('crocodile')" data-game="crocodile">
+                            <div class="game-option" data-game="crocodile">
                                 <div class="game-icon">🐊</div>
                                 <h3>Крокодил</h3>
-                                <p>3-8 игроков • 25 очков</p>
+                                <p>25 очков</p>
                             </div>
-                            <div class="game-option" onclick="selectGame('danetki')" data-game="danetki">
+                            <div class="game-option" data-game="danetki">
                                 <div class="game-icon">❓</div>
                                 <h3>Данетки</h3>
-                                <p>3-8 игроков • 20 очков</p>
+                                <p>20 очков</p>
                             </div>
-                            <div class="game-option" onclick="selectGame('hat')" data-game="hat">
+                            <div class="game-option" data-game="hat">
                                 <div class="game-icon">🎩</div>
                                 <h3>Шляпа</h3>
-                                <p>4-8 игроков • 25 очков</p>
+                                <p>25 очков</p>
                             </div>
                         </div>
                         
                         <!-- Ряд 3 -->
                         <div class="games-row">
-                            <div class="game-option" onclick="selectGame('who-am-i')" data-game="who-am-i">
+                            <div class="game-option" data-game="who-am-i">
                                 <div class="game-icon">🤔</div>
                                 <h3>Кто я?</h3>
-                                <p>3-8 игроков • 15 очков</p>
+                                <p>15 очков</p>
                             </div>
-                            <div class="game-option" onclick="selectGame('balda')" data-game="balda">
+                            <div class="game-option" data-game="balda">
                                 <div class="game-icon">📝</div>
                                 <h3>Балда</h3>
-                                <p>2-4 игроков • 25 очков</p>
+                                <p>25 очков</p>
                             </div>
                             <div class="game-option coming-soon">
                                 <div class="game-icon">🎲</div>
                                 <h3>Скоро...</h3>
-                                <p>Новые игры</p>
+                                <p>—</p>
                             </div>
                         </div>
                     </div>
@@ -202,7 +195,7 @@
                 <div id="game-canvas" class="game-canvas" style="display: none;"></div>
             </div>
             
-            <!-- Чат -->
+            <!-- ЧАТ - компактный -->
             <div class="chat-panels">
                 <div class="global-chat">
                     <div class="chat-header">🌍 Общий чат</div>
@@ -213,7 +206,7 @@
                     </div>
                     <div class="chat-input">
                         <input type="text" id="global-chat-input" placeholder="Сообщение всем...">
-                        <button onclick="sendGlobalMessage()">➤</button>
+                        <button onclick="window.sendGlobalMessage()">➤</button>
                     </div>
                 </div>
             </div>
@@ -222,7 +215,7 @@
         <!-- Плавающий код -->
         <div class="floating-code">
             <span id="floating-code">#------</span>
-            <button class="copy-btn-small" onclick="copyRoomCode()">📋</button>
+            <button class="copy-btn-small" onclick="window.copyRoomCode()">📋</button>
         </div>
     </div>
     
@@ -231,6 +224,7 @@
         👆 Нажмите на игровое поле, чтобы переключаться между игроками
     </div>
     
+    <!-- Скрипты -->
     <script src="game-engine.js"></script>
     <script src="room-script.js"></script>
     
@@ -239,17 +233,13 @@
         window.addEventListener('load', function() {
             setTimeout(() => {
                 document.getElementById('loading-screen').style.display = 'none';
-            }, 1000);
+            }, 800);
+            
+            // Показываем отладку
+            document.getElementById('debug-info').textContent = '✅ Загружено';
         });
         
         console.log('🏁 room.html загружен');
-        console.log('localStorage:', {
-            playerNickname: localStorage.getItem('playerNickname'),
-            playerId: localStorage.getItem('playerId'),
-            roomCode: localStorage.getItem('roomCode'),
-            roomId: localStorage.getItem('roomId'),
-            isAdmin: localStorage.getItem('isAdmin')
-        });
     </script>
 </body>
 </html>
