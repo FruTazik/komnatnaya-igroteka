@@ -21,7 +21,7 @@ window.database = database;
 window.roomsRef = roomsRef;
 
 console.log('✅ Firebase подключен!');
-console.log('📁 База данных:', firebaseConfig.databaseURL);
+console.log('📁 Database URL:', firebaseConfig.databaseURL);
 
 // Вспомогательные функции
 function generateRoomCode() {
