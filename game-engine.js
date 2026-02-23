@@ -3,7 +3,7 @@ class GameEngine {
     constructor() {
         this.currentGame = null;
         this.players = [];
-        this.matches = [];
+        this.matches = {};
         this.gameState = 'waiting';
         this.timer = null;
         this.timerValue = 20 * 60;
@@ -21,9 +21,10 @@ class GameEngine {
         };
     }
 
-    initGame(gameName, players) {
+    initGame(gameName, players, matches) {
         this.currentGame = gameName;
         this.players = players.map(p => ({...p, score: p.score || 0}));
+        this.matches = matches || {};
         this.gameState = 'playing';
         this.startTimer(20 * 60);
         return this.getGameConfig();
@@ -58,10 +59,11 @@ class GameEngine {
     }
 
     makeMove(playerId, matchId, move) {
-        const match = this.matches.find(m => m.id === matchId);
+        const match = this.matches[matchId];
         if (!match) return false;
         if (match.currentTurn !== playerId) return false;
         
+        match.moves = match.moves || [];
         match.moves.push({ player: playerId, move, timestamp: Date.now() });
         match.currentTurn = match.currentTurn === match.player1.id ? match.player2.id : match.player1.id;
         return true;
@@ -78,7 +80,7 @@ class GameEngine {
     endGame(reason, winner = null) {
         clearInterval(this.timer);
         let message = reason === 'winner' ? `🏆 Победитель: ${winner.nickname}` : '⏰ Время вышло!';
-        alert(message);
+        console.log(message);
         this.gameState = 'finished';
     }
 
@@ -86,10 +88,12 @@ class GameEngine {
         clearInterval(this.timer);
         this.currentGame = null;
         this.players = [];
-        this.matches = [];
+        this.matches = {};
         this.gameState = 'waiting';
         this.timerValue = 20 * 60;
     }
 }
 
+// Создаем глобальный экземпляр
 window.gameEngine = new GameEngine();
+console.log('✅ game-engine.js загружен');
